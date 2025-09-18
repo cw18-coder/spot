@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Robot Showcase - Choose Your Favorite</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white;
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #00e676;
+            text-shadow: 0 0 10px #00e676;
+            margin-bottom: 30px;
+        }
+        
+        .robots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .robot-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #00e676;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        
+        .robot-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 230, 118, 0.3);
+            border-color: #40c4ff;
+        }
+        
+        .robot-canvas {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            margin: 10px auto;
+            display: block;
+        }
+        
+        .robot-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 15px 0 10px;
+            color: #00e676;
+        }
+        
+        .robot-description {
+            font-size: 14px;
+            color: #ccc;
+            line-height: 1.4;
+        }
+        
+        .current-robot {
+            border-color: #ff6b35;
+            background: rgba(255, 107, 53, 0.1);
+        }
+        
+        .current-robot .robot-title {
+            color: #ff6b35;
+        }
+        
+        .instructions {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🤖 AI Robot Design Showcase</h1>
+    
+    <div class="instructions">
+        <p>Choose your favorite robot design! Each robot has a unique personality and visual style.</p>
+        <p><strong>Tell me which number you prefer</strong> and I'll update your simulation with that design.</p>
+    </div>
+    
+    <div class="robots-grid">
+        <!-- Current Robot -->
+        <div class="robot-card current-robot">
+            <canvas class="robot-canvas" id="robot-current" width="240" height="200"></canvas>
+            <div class="robot-title">CURRENT - Advanced Silver Bot</div>
+            <div class="robot-description">Your current sophisticated robot with silver body, glowing blue eyes, articulated arms, and thought bubbles.</div>
+        </div>
+        
+        <!-- Robot 1 -->
+        <div class="robot-card">
+            <canvas class="robot-canvas" id="robot-1" width="240" height="200"></canvas>
+            <div class="robot-title">1 - Neon Cyber Bot</div>
+            <div class="robot-description">Futuristic design with neon accents, hexagonal patterns, and pulsing energy lines.</div>
+        </div>
+        
+        <!-- Robot 2 -->
+        <div class="robot-card">
+            <canvas class="robot-canvas" id="robot-2" width="240" height="200"></canvas>
+            <div class="robot-title">2 - Industrial Mech</div>
+            <div class="robot-description">Heavy-duty industrial robot with exposed joints, warning stripes, and utility arms.</div>
+        </div>
+        
+        <!-- Robot 3 -->
+        <div class="robot-card">
+            <canvas class="robot-canvas" id="robot-3" width="240" height="200"></canvas>
+            <div class="robot-title">3 - Friendly Helper Bot</div>
+            <div class="robot-description">Rounded, friendly design with expressive LED face and gentle color scheme.</div>
+        </div>
+        
+        <!-- Robot 4 -->
+        <div class="robot-card">
+            <canvas class="robot-canvas" id="robot-4" width="240" height="200"></canvas>
+            <div class="robot-title">4 - Stealth Operator</div>
+            <div class="robot-description">Sleek, dark design with red scanner eye and angular military-inspired aesthetics.</div>
+        </div>
+        
+        <!-- Robot 5 -->
+        <div class="robot-card">
+            <canvas class="robot-canvas" id="robot-5" width="240" height="200"></canvas>
+            <div class="robot-title">5 - Retro Space Bot</div>
+            <div class="robot-description">Classic 1960s sci-fi inspired robot with chrome finish and vintage TV screen head.</div>
+        </div>
+        
+        <!-- Robot 6 -->
+        <div class="robot-card">
+            <canvas class="robot-canvas" id="robot-6" width="240" height="200"></canvas>
+            <div class="robot-title">6 - Holographic Assistant</div>
+            <div class="robot-description">Translucent design with holographic effects and floating geometric elements.</div>
+        </div>
+        
+        <!-- Robot 7 -->
+        <div class="robot-card">
+            <canvas class="robot-canvas" id="robot-7" width="240" height="200"></canvas>
+            <div class="robot-title">7 - Biomech Hybrid</div>
+            <div class="robot-description">Organic-tech fusion with flowing curves, bio-luminescent features, and nature-inspired elements.</div>
+        </div>
+        
+        <!-- Robot 8 -->
+        <div class="robot-card">
+            <canvas class="robot-canvas" id="robot-8" width="240" height="200"></canvas>
+            <div class="robot-title">8 - Miniature Drone</div>
+            <div class="robot-description">Compact flying robot with spinning rotors, camera dome, and LED status indicators.</div>
+        </div>
+        
+        <!-- Robot 9 -->
+        <div class="robot-card">
+            <canvas class="robot-canvas" id="robot-9" width="240" height="200"></canvas>
+            <div class="robot-title">9 - Quantum Core Bot</div>
+            <div class="robot-description">Advanced robot with visible energy core, particle effects, and crystalline structure elements.</div>
+        </div>
+        
+        <!-- Robot 10 -->
+        <div class="robot-card">
+            <canvas class="robot-canvas" id="robot-10" width="240" height="200"></canvas>
+            <div class="robot-title">10 - Maintenance Specialist</div>
+            <div class="robot-description">Practical work robot with tool attachments, storage compartments, and rugged construction.</div>
+        </div>
+    </div>
+
+    <script>
+        // Robot rendering functions
+        
+        // Current Robot (from your existing design)
+        function renderCurrentRobot(ctx, x, y) {
+            ctx.save();
+            
+            // Robot shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(x + 3, y + 45, 25, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Robot body - silver metallic cylinder
+            const gradient = ctx.createLinearGradient(x - 20, y, x + 20, y);
+            gradient.addColorStop(0, '#e8e8e8');
+            gradient.addColorStop(0.3, '#c0c0c0');
+            gradient.addColorStop(0.7, '#a8a8a8');
+            gradient.addColorStop(1, '#909090');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.roundRect(x - 20, y - 10, 40, 50, 8);
+            ctx.fill();
+            
+            // Robot head
+            const headGradient = ctx.createRadialGradient(x - 5, y - 25, 5, x, y - 20, 15);
+            headGradient.addColorStop(0, '#ffffff');
+            headGradient.addColorStop(0.7, '#d0d0d0');
+            headGradient.addColorStop(1, '#a0a0a0');
+            
+            ctx.fillStyle = headGradient;
+            ctx.beginPath();
+            ctx.arc(x, y - 20, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Robot eyes - glowing blue
+            const eyeGlow = 0.5 + 0.5 * Math.sin(Date.now() * 0.004);
+            ctx.fillStyle = `rgba(64, 196, 255, ${eyeGlow})`;
+            ctx.shadowColor = '#40c4ff';
+            ctx.shadowBlur = 8;
+            
+            // Left eye
+            ctx.beginPath();
+            ctx.arc(x - 6, y - 22, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Right eye
+            ctx.beginPath();
+            ctx.arc(x + 6, y - 22, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        }
+        
+        // Robot 1 - Neon Cyber Bot
+        function renderRobot1(ctx, x, y) {
+            ctx.save();
+            
+            // Neon glow effect
+            const time = Date.now() * 0.003;
+            const glowIntensity = 0.5 + 0.5 * Math.sin(time);
+            
+            // Main body - hexagonal with neon edges
+            ctx.strokeStyle = `rgba(0, 255, 255, ${glowIntensity})`;
+            ctx.lineWidth = 3;
+            ctx.shadowColor = '#00ffff';
+            ctx.shadowBlur = 15;
+            
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI) / 3;
+                const px = x + Math.cos(angle) * 20;
+                const py = y + Math.sin(angle) * 25;
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(0, 20, 40, 0.8)';
+            ctx.fill();
+            ctx.stroke();
+            
+            // Head - glowing orb
+            ctx.fillStyle = `rgba(0, 255, 255, ${0.3 + glowIntensity * 0.7})`;
+            ctx.beginPath();
+            ctx.arc(x, y - 30, 12, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Energy lines
+            ctx.strokeStyle = `rgba(255, 0, 255, ${glowIntensity})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x - 15, y - 10);
+            ctx.lineTo(x + 15, y + 10);
+            ctx.moveTo(x + 15, y - 10);
+            ctx.lineTo(x - 15, y + 10);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+        
+        // Robot 2 - Industrial Mech
+        function renderRobot2(ctx, x, y) {
+            ctx.save();
+            
+            // Main body - industrial metal
+            ctx.fillStyle = '#4a5568';
+            ctx.strokeStyle = '#2d3748';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.rect(x - 22, y - 15, 44, 55);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Warning stripes
+            ctx.fillStyle = '#ffd700';
+            for (let i = 0; i < 3; i++) {
+                ctx.fillRect(x - 20, y - 10 + i * 15, 40, 3);
+            }
+            
+            // Head - angular helmet
+            ctx.fillStyle = '#2d3748';
+            ctx.beginPath();
+            ctx.moveTo(x - 15, y - 35);
+            ctx.lineTo(x + 15, y - 35);
+            ctx.lineTo(x + 12, y - 15);
+            ctx.lineTo(x - 12, y - 15);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Visor
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+            ctx.fillRect(x - 10, y - 30, 20, 8);
+            
+            // Utility arms
+            ctx.strokeStyle = '#718096';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(x - 22, y);
+            ctx.lineTo(x - 35, y - 5);
+            ctx.lineTo(x - 30, y + 10);
+            ctx.moveTo(x + 22, y);
+            ctx.lineTo(x + 35, y - 5);
+            ctx.lineTo(x + 30, y + 10);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+        
+        // Robot 3 - Friendly Helper Bot
+        function renderRobot3(ctx, x, y) {
+            ctx.save();
+            
+            // Main body - rounded and friendly
+            ctx.fillStyle = '#63b3ed';
+            ctx.strokeStyle = '#3182ce';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(x - 18, y - 10, 36, 50, 18);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Head - circular
+            ctx.fillStyle = '#90cdf4';
+            ctx.beginPath();
+            ctx.arc(x, y - 25, 18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Happy face
+            ctx.fillStyle = '#2b6cb0';
+            // Eyes
+            ctx.beginPath();
+            ctx.arc(x - 7, y - 30, 2, 0, Math.PI * 2);
+            ctx.arc(x + 7, y - 30, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Smile
+            ctx.strokeStyle = '#2b6cb0';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x, y - 22, 8, 0, Math.PI);
+            ctx.stroke();
+            
+            // Friendly arms
+            ctx.strokeStyle = '#4299e1';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(x - 18, y + 5);
+            ctx.lineTo(x - 25, y + 15);
+            ctx.moveTo(x + 18, y + 5);
+            ctx.lineTo(x + 25, y + 15);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+        
+        // Robot 4 - Stealth Operator
+        function renderRobot4(ctx, x, y) {
+            ctx.save();
+            
+            // Main body - angular stealth design
+            ctx.fillStyle = '#1a202c';
+            ctx.strokeStyle = '#4a5568';
+            ctx.lineWidth = 1;
+            
+            ctx.beginPath();
+            ctx.moveTo(x - 15, y - 5);
+            ctx.lineTo(x - 20, y + 20);
+            ctx.lineTo(x + 20, y + 20);
+            ctx.lineTo(x + 15, y - 5);
+            ctx.lineTo(x + 10, y - 15);
+            ctx.lineTo(x - 10, y - 15);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Head - angular
+            ctx.beginPath();
+            ctx.moveTo(x - 12, y - 35);
+            ctx.lineTo(x + 12, y - 35);
+            ctx.lineTo(x + 8, y - 15);
+            ctx.lineTo(x - 8, y - 15);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Scanner eye
+            const scanGlow = 0.3 + 0.7 * Math.sin(Date.now() * 0.008);
+            ctx.fillStyle = `rgba(255, 0, 0, ${scanGlow})`;
+            ctx.shadowColor = '#ff0000';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.rect(x - 8, y - 30, 16, 4);
+            ctx.fill();
+            
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        }
+        
+        // Robot 5 - Retro Space Bot
+        function renderRobot5(ctx, x, y) {
+            ctx.save();
+            
+            // Main body - chrome cylinder
+            const gradient = ctx.createLinearGradient(x - 20, y, x + 20, y);
+            gradient.addColorStop(0, '#f7fafc');
+            gradient.addColorStop(0.5, '#e2e8f0');
+            gradient.addColorStop(1, '#cbd5e0');
+            
+            ctx.fillStyle = gradient;
+            ctx.strokeStyle = '#4a5568';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.rect(x - 20, y - 5, 40, 45);
+            ctx.fill();
+            ctx.stroke();
+            
+            // TV screen head
+            ctx.fillStyle = '#2d3748';
+            ctx.beginPath();
+            ctx.roundRect(x - 16, y - 35, 32, 25, 4);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Screen content
+            ctx.fillStyle = '#68d391';
+            ctx.fillRect(x - 12, y - 30, 24, 15);
+            
+            // Retro face on screen
+            ctx.fillStyle = '#2d3748';
+            ctx.font = '12px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(':-)', x, y - 20);
+            
+            // Antenna
+            ctx.strokeStyle = '#4a5568';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x, y - 35);
+            ctx.lineTo(x, y - 45);
+            ctx.stroke();
+            
+            // Antenna ball
+            ctx.fillStyle = '#f56565';
+            ctx.beginPath();
+            ctx.arc(x, y - 47, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        // Robot 6 - Holographic Assistant
+        function renderRobot6(ctx, x, y) {
+            ctx.save();
+            
+            const time = Date.now() * 0.002;
+            const alpha = 0.4 + 0.3 * Math.sin(time);
+            
+            // Holographic body
+            ctx.fillStyle = `rgba(138, 43, 226, ${alpha})`;
+            ctx.strokeStyle = `rgba(186, 85, 211, ${alpha + 0.3})`;
+            ctx.lineWidth = 2;
+            ctx.shadowColor = '#9932cc';
+            ctx.shadowBlur = 20;
+            
+            ctx.beginPath();
+            ctx.roundRect(x - 15, y - 10, 30, 45, 10);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Floating geometric elements
+            for (let i = 0; i < 4; i++) {
+                const angle = time + (i * Math.PI) / 2;
+                const radius = 25 + 5 * Math.sin(time * 2 + i);
+                const px = x + Math.cos(angle) * radius;
+                const py = y + Math.sin(angle) * radius;
+                
+                ctx.fillStyle = `rgba(0, 191, 255, ${alpha * 0.8})`;
+                ctx.beginPath();
+                ctx.rect(px - 3, py - 3, 6, 6);
+                ctx.fill();
+            }
+            
+            // Holographic head
+            ctx.fillStyle = `rgba(72, 187, 120, ${alpha})`;
+            ctx.beginPath();
+            ctx.arc(x, y - 25, 12, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        // Robot 7 - Biomech Hybrid
+        function renderRobot7(ctx, x, y) {
+            ctx.save();
+            
+            // Organic curves for body
+            ctx.fillStyle = '#2f855a';
+            ctx.strokeStyle = '#38a169';
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y - 15);
+            ctx.bezierCurveTo(x - 25, y - 10, x - 25, y + 30, x, y + 40);
+            ctx.bezierCurveTo(x + 25, y + 30, x + 25, y - 10, x, y - 15);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Bio-luminescent spots
+            const glowTime = Date.now() * 0.004;
+            for (let i = 0; i < 5; i++) {
+                const spotGlow = 0.3 + 0.7 * Math.sin(glowTime + i);
+                ctx.fillStyle = `rgba(104, 211, 145, ${spotGlow})`;
+                ctx.shadowColor = '#68d391';
+                ctx.shadowBlur = 8;
+                
+                const spotY = y - 5 + i * 8;
+                ctx.beginPath();
+                ctx.arc(x + (i % 2 === 0 ? -8 : 8), spotY, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Organic head
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#276749';
+            ctx.beginPath();
+            ctx.moveTo(x, y - 35);
+            ctx.bezierCurveTo(x - 15, y - 30, x - 15, y - 15, x, y - 15);
+            ctx.bezierCurveTo(x + 15, y - 15, x + 15, y - 30, x, y - 35);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Compound eyes
+            ctx.fillStyle = '#68d391';
+            ctx.beginPath();
+            ctx.arc(x - 5, y - 25, 4, 0, Math.PI * 2);
+            ctx.arc(x + 5, y - 25, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        // Robot 8 - Miniature Drone
+        function renderRobot8(ctx, x, y) {
+            ctx.save();
+            
+            // Main drone body - small and compact
+            ctx.fillStyle = '#4a5568';
+            ctx.strokeStyle = '#2d3748';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(x - 12, y - 5, 24, 20, 6);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Camera dome
+            ctx.fillStyle = '#1a202c';
+            ctx.beginPath();
+            ctx.arc(x, y - 15, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Camera lens
+            ctx.fillStyle = '#63b3ed';
+            ctx.beginPath();
+            ctx.arc(x, y - 15, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Propellers
+            const propTime = Date.now() * 0.02;
+            ctx.strokeStyle = '#a0aec0';
+            ctx.lineWidth = 2;
+            
+            // Four rotors
+            const rotorPositions = [
+                {dx: -18, dy: -8},
+                {dx: 18, dy: -8},
+                {dx: -18, dy: 12},
+                {dx: 18, dy: 12}
+            ];
+            
+            rotorPositions.forEach(pos => {
+                const rotorX = x + pos.dx;
+                const rotorY = y + pos.dy;
+                
+                // Rotor blur effect
+                ctx.beginPath();
+                ctx.arc(rotorX, rotorY, 8, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(160, 174, 192, 0.3)`;
+                ctx.lineWidth = 16;
+                ctx.stroke();
+                
+                // Rotor center
+                ctx.fillStyle = '#2d3748';
+                ctx.beginPath();
+                ctx.arc(rotorX, rotorY, 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            // Status LEDs
+            ctx.fillStyle = Math.sin(propTime) > 0 ? '#48bb78' : '#f56565';
+            ctx.beginPath();
+            ctx.arc(x - 8, y + 5, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = Math.sin(propTime + 1) > 0 ? '#48bb78' : '#f56565';
+            ctx.beginPath();
+            ctx.arc(x + 8, y + 5, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        // Robot 9 - Quantum Core Bot
+        function renderRobot9(ctx, x, y) {
+            ctx.save();
+            
+            const time = Date.now() * 0.003;
+            
+            // Crystalline body structure
+            ctx.fillStyle = 'rgba(147, 197, 253, 0.3)';
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2;
+            
+            // Main body - crystal facets
+            ctx.beginPath();
+            ctx.moveTo(x, y - 15);
+            ctx.lineTo(x - 20, y);
+            ctx.lineTo(x - 15, y + 25);
+            ctx.lineTo(x + 15, y + 25);
+            ctx.lineTo(x + 20, y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Quantum core - pulsing energy center
+            const coreGlow = 0.5 + 0.5 * Math.sin(time * 2);
+            ctx.fillStyle = `rgba(139, 92, 246, ${coreGlow})`;
+            ctx.shadowColor = '#8b5cf6';
+            ctx.shadowBlur = 20;
+            ctx.beginPath();
+            ctx.arc(x, y + 5, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Particle effects around core
+            for (let i = 0; i < 8; i++) {
+                const angle = time + (i * Math.PI) / 4;
+                const radius = 15 + 3 * Math.sin(time * 3 + i);
+                const px = x + Math.cos(angle) * radius;
+                const py = y + 5 + Math.sin(angle) * radius;
+                
+                ctx.fillStyle = `rgba(236, 72, 153, ${0.3 + 0.4 * Math.sin(time * 2 + i)})`;
+                ctx.shadowBlur = 5;
+                ctx.beginPath();
+                ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Crystal head
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = 'rgba(196, 181, 253, 0.4)';
+            ctx.beginPath();
+            ctx.moveTo(x, y - 35);
+            ctx.lineTo(x - 12, y - 20);
+            ctx.lineTo(x - 8, y - 15);
+            ctx.lineTo(x + 8, y - 15);
+            ctx.lineTo(x + 12, y - 20);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Quantum eyes
+            ctx.fillStyle = `rgba(167, 243, 208, ${coreGlow})`;
+            ctx.beginPath();
+            ctx.arc(x - 4, y - 22, 2, 0, Math.PI * 2);
+            ctx.arc(x + 4, y - 22, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        // Robot 10 - Maintenance Specialist
+        function renderRobot10(ctx, x, y) {
+            ctx.save();
+            
+            // Rugged main body
+            ctx.fillStyle = '#f7931e';
+            ctx.strokeStyle = '#cc7a00';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(x - 20, y - 10, 40, 50, 5);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Tool storage compartments
+            ctx.fillStyle = '#4a5568';
+            ctx.fillRect(x - 18, y - 5, 10, 8);
+            ctx.fillRect(x + 8, y - 5, 10, 8);
+            ctx.fillRect(x - 18, y + 10, 10, 8);
+            ctx.fillRect(x + 8, y + 10, 10, 8);
+            
+            // Work helmet head
+            ctx.fillStyle = '#ffd700';
+            ctx.beginPath();
+            ctx.arc(x, y - 25, 15, Math.PI, 0);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Safety visor
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.arc(x, y - 25, 12, Math.PI, 0);
+            ctx.fill();
+            
+            // Headlight
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(x, y - 30, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Multi-tool arms
+            ctx.strokeStyle = '#718096';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            
+            // Left arm - wrench
+            ctx.beginPath();
+            ctx.moveTo(x - 20, y + 5);
+            ctx.lineTo(x - 35, y + 10);
+            ctx.stroke();
+            
+            // Wrench head
+            ctx.strokeStyle = '#4a5568';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(x - 35, y + 8);
+            ctx.lineTo(x - 35, y + 12);
+            ctx.stroke();
+            
+            // Right arm - screwdriver
+            ctx.strokeStyle = '#718096';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(x + 20, y + 5);
+            ctx.lineTo(x + 35, y + 10);
+            ctx.stroke();
+            
+            // Screwdriver tip
+            ctx.strokeStyle = '#2d3748';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x + 35, y + 10);
+            ctx.lineTo(x + 40, y + 10);
+            ctx.stroke();
+            
+            // Work eyes
+            ctx.fillStyle = '#48bb78';
+            ctx.beginPath();
+            ctx.arc(x - 6, y - 28, 2, 0, Math.PI * 2);
+            ctx.arc(x + 6, y - 28, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        // Animation loop
+        function animate() {
+            // Clear and render all robots
+            const canvases = [
+                'robot-current', 'robot-1', 'robot-2', 'robot-3', 'robot-4', 'robot-5',
+                'robot-6', 'robot-7', 'robot-8', 'robot-9', 'robot-10'
+            ];
+            
+            const renderFunctions = [
+                renderCurrentRobot, renderRobot1, renderRobot2, renderRobot3, renderRobot4,
+                renderRobot5, renderRobot6, renderRobot7, renderRobot8, renderRobot9, renderRobot10
+            ];
+            
+            canvases.forEach((canvasId, index) => {
+                const canvas = document.getElementById(canvasId);
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Center position for each robot
+                    const centerX = canvas.width / 2;
+                    const centerY = canvas.height / 2;
+                    
+                    renderFunctions[index](ctx, centerX, centerY);
+                }
+            });
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Start animation when page loads
+        window.addEventListener('load', () => {
+            animate();
+        });
+    </script>
+</body>
+</html>

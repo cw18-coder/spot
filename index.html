@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Center Hardware Management Simulation</title>
+    
+    <!-- External CSS Files -->
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/animations.css">
+</head>
+<body>
+    <!-- Main Application Container -->
+    <div id="app-container">
+        <!-- Top Control Bar -->
+        <header id="control-bar">
+            <div class="controls-left">
+                <h1>Data Center AI Management Simulation</h1>
+                <div class="simulation-controls">
+                    <button id="play-pause-btn" class="control-btn">⏸️ Pause</button>
+                    <button id="speed-btn" class="control-btn">1x Speed</button>
+                    <button id="reset-btn" class="control-btn">🔄 Reset</button>
+                    <button id="reset-view-btn" class="control-btn">🏠 Reset View</button>
+                    <button id="truck-arrival-btn" class="control-btn">🚛 Send Truck</button>
+                    <button id="forklift-task-btn" class="control-btn">🏗️ Forklift Task</button>
+                    <button id="debug-mode-btn" class="control-btn">🔍 Debug</button>
+                </div>
+            </div>
+            <div class="controls-right">
+                <div class="location-tabs">
+                    <button class="tab-btn active" data-location="overview">Overview</button>
+                    <button class="tab-btn" data-location="loading-bay">Loading Bay</button>
+                    <button class="tab-btn" data-location="storage-room">Storage Room</button>
+                    <button class="tab-btn" data-location="server-floor">Server Floor</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area - Split Layout -->
+        <main id="main-content">
+            <!-- Canvas Area (2/3 width) -->
+            <div id="canvas-container">
+                <!-- Background Layer - Static layouts -->
+                <canvas id="background-canvas" width="1200" height="800"></canvas>
+                
+                <!-- Entity Layer - Moving objects -->
+                <canvas id="entity-canvas" width="1200" height="800"></canvas>
+                
+                <!-- UI Layer - Status information -->
+                <canvas id="ui-canvas" width="1200" height="800"></canvas>
+                
+                <!-- Effect Layer - Particles and visual effects -->
+                <canvas id="effect-canvas" width="1200" height="800"></canvas>
+            </div>
+
+            <!-- Information Panels Area (1/3 width) -->
+            <aside id="info-panels">
+                <!-- AI Agent Status Panel -->
+                <div id="ai-status-panel" class="panel">
+                    <h3>🤖 AI Agent Status</h3>
+                    <div id="ai-current-task">Analyzing inventory patterns...</div>
+                    <div id="ai-thought-bubble" class="thought-bubble hidden">
+                        <div class="bubble-content"></div>
+                    </div>
+                </div>
+
+                <!-- Event Notifications -->
+                <div id="notifications-panel" class="panel">
+                    <h3>🔔 Recent Events</h3>
+                    <div id="notification-list">
+                        <div class="notification info">System initialized</div>
+                    </div>
+                </div>
+
+                <!-- Metrics Dashboard -->
+                <div id="metrics-panel" class="panel">
+                    <h3>📊 Performance Metrics</h3>
+                    <div class="metric-row">
+                        <span class="metric-label">Inventory Efficiency:</span>
+                        <span id="inventory-efficiency" class="metric-value">95%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Average Response Time:</span>
+                        <span id="response-time" class="metric-value">2.3 min</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Storage Utilization:</span>
+                        <span id="storage-utilization" class="metric-value">78%</span>
+                    </div>
+                </div>
+
+                <!-- AI Decision History Panel -->
+                <div id="ai-decisions-panel" class="panel">
+                    <h3>🧠 AI Decision Log</h3>
+                    <div id="ai-decision-list">
+                        <div class="decision-item">System initializing...</div>
+                    </div>
+                </div>
+
+                <!-- Planning Visualization Panel -->
+                <div id="planning-panel" class="panel">
+                    <h3>📋 AI Planning Center</h3>
+                    <div id="active-plans">
+                        <div class="plan-item">No active plans</div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Bottom Status Bar -->
+        <footer id="status-bar">
+            <div class="status-left">
+                <span id="simulation-time">Time: 00:00</span>
+                <span id="active-events">Events: 0</span>
+            </div>
+            <div class="status-center">
+                <span id="current-view">Current View: Overview</span>
+                <span id="zoom-level">Zoom: 100%</span>
+            </div>
+            <div class="status-right">
+                <span id="fps-counter">FPS: 60</span>
+                <span id="entity-count">Entities: 0</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="hidden">
+        <div class="loading-content">
+            <h2>Initializing Data Center Simulation...</h2>
+            <div class="loading-bar">
+                <div class="loading-progress" id="loading-progress"></div>
+            </div>
+            <p id="loading-status">Setting up environment...</p>
+        </div>
+    </div>
+    
+    <!-- External JavaScript Files - Load in correct order -->
+    <script src="js/hardware-entities.js"></script>
+    <script src="js/interaction-zones.js"></script>
+    <script src="js/ai-robot.js"></script>
+    <script src="js/transport-systems.js"></script>
+    <script src="js/event-system.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

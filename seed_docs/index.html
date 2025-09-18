@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Center Hardware Management Simulation</title>
+    <style>
+        /* Global Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        #app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Header Styles */
+        #control-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid #00ff88;
+            z-index: 1000;
+        }
+
+        .controls-left h1 {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+            background: linear-gradient(45deg, #00ff88, #00d4ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .simulation-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .control-btn {
+            padding: 8px 16px;
+            background: linear-gradient(145deg, #2d4a73, #1e3c72);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-btn:hover {
+            background: linear-gradient(145deg, #3d5a83, #2e4c82);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+        }
+
+        .location-tabs {
+            display: flex;
+            gap: 2px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+            border-radius: 6px 6px 0 0;
+        }
+
+        .tab-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .tab-btn.active {
+            background: #00ff88;
+            color: #1e3c72;
+            font-weight: bold;
+        }
+
+        /* Canvas Container */
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(45deg, #0a0a0a, #1a1a1a);
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: grab;
+        }
+
+        #background-canvas { z-index: 1; }
+        #entity-canvas { z-index: 2; }
+        #ui-canvas { z-index: 3; }
+        #effect-canvas { z-index: 4; pointer-events: none; }
+
+        /* UI Overlay */
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .panel {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            padding: 15px;
+            min-width: 200px;
+            backdrop-filter: blur(10px);
+            pointer-events: auto;
+            box-shadow: 0 4px 20px rgba(0, 255, 136, 0.2);
+        }
+
+        #ai-status-panel { top: 20px; right: 20px; }
+        #metrics-panel { top: 20px; left: 20px; }
+        #notifications-panel {
+            bottom: 80px;
+            right: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .panel h3 {
+            margin-bottom: 10px;
+            color: #00ff88;
+            font-size: 1.1em;
+        }
+
+        #ai-current-task {
+            color: #ffffff;
+            font-style: italic;
+            margin-bottom: 10px;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+
+        .metric-label { color: #cccccc; }
+        .metric-value {
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        .notification {
+            padding: 8px;
+            margin-bottom: 5px;
+            border-left: 3px solid;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        .notification.info {
+            background: rgba(0, 100, 255, 0.1);
+            border-color: #0064ff;
+            color: #87ceeb;
+        }
+
+        .notification.warning {
+            background: rgba(255, 165, 0, 0.1);
+            border-color: #ffa500;
+            color: #ffd700;
+        }
+
+        .notification.error {
+            background: rgba(255, 0, 0, 0.1);
+            border-color: #ff0000;
+            color: #ff6b6b;
+        }
+
+        .notification.success {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+
+        /* Thought Bubble */
+        .thought-bubble {
+            position: relative;
+            background: rgba(255, 255, 255, 0.95);
+            color: #1e3c72;
+            border-radius: 15px;
+            padding: 12px;
+            margin-top: 10px;
+            max-width: 250px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transform: scale(0);
+            transition: transform 0.3s ease;
+        }
+
+        .thought-bubble:not(.hidden) {
+            transform: scale(1);
+        }
+
+        .thought-bubble::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 20px;
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 10px solid rgba(255, 255, 255, 0.95);
+        }
+
+        /* Status Bar */
+        #status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-top: 1px solid #333;
+            font-size: 0.85em;
+            z-index: 1000;
+        }
+
+        .status-left, .status-center, .status-right {
+            display: flex;
+            gap: 20px;
+        }
+
+        #current-view {
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        /* Loading Screen */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+
+        .loading-content {
+            text-align: center;
+            max-width: 400px;
+        }
+
+        .loading-content h2 {
+            margin-bottom: 20px;
+            color: #00ff88;
+        }
+
+        .loading-bar {
+            width: 100%;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .loading-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00d4ff);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        #loading-status {
+            color: #ccc;
+            font-size: 0.9em;
+        }
+
+        /* Utility Classes */
+        .hidden { display: none !important; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        .pulse { animation: pulse 2s infinite; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .controls-left h1 { font-size: 1.2em; }
+            .simulation-controls { flex-wrap: wrap; }
+            .location-tabs { flex-wrap: wrap; }
+            .panel {
+                font-size: 0.85em;
+                padding: 10px;
+                min-width: 150px;
+            }
+            .status-left, .status-center, .status-right { gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Main Application Container -->
+    <div id="app-container">
+        <!-- Top Control Bar -->
+        <header id="control-bar">
+            <div class="controls-left">
+                <h1>Data Center AI Management Simulation</h1>
+                <div class="simulation-controls">
+                    <button id="play-pause-btn" class="control-btn">⏸️ Pause</button>
+                    <button id="speed-btn" class="control-btn">1x Speed</button>
+                    <button id="reset-btn" class="control-btn">🔄 Reset</button>
+                    <button id="reset-view-btn" class="control-btn">🏠 Reset View</button>
+                </div>
+            </div>
+            <div class="controls-right">
+                <div class="location-tabs">
+                    <button class="tab-btn active" data-location="overview">Overview</button>
+                    <button class="tab-btn" data-location="loading-bay">Loading Bay</button>
+                    <button class="tab-btn" data-location="storage-room">Storage Room</button>
+                    <button class="tab-btn" data-location="server-floor">Server Floor</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Canvas Area -->
+        <main id="canvas-container">
+            <!-- Background Layer - Static layouts -->
+            <canvas id="background-canvas" width="1200" height="800"></canvas>
+            
+            <!-- Entity Layer - Moving objects -->
+            <canvas id="entity-canvas" width="1200" height="800"></canvas>
+            
+            <!-- UI Layer - Status information -->
+            <canvas id="ui-canvas" width="1200" height="800"></canvas>
+            
+            <!-- Effect Layer - Particles and visual effects -->
+            <canvas id="effect-canvas" width="1200" height="800"></canvas>
+            
+            <!-- HTML Overlay for complex UI elements -->
+            <div id="ui-overlay">
+                <!-- AI Agent Status Panel -->
+                <div id="ai-status-panel" class="panel">
+                    <h3>🤖 AI Agent Status</h3>
+                    <div id="ai-current-task">Analyzing inventory patterns...</div>
+                    <div id="ai-thought-bubble" class="thought-bubble hidden">
+                        <div class="bubble-content"></div>
+                    </div>
+                </div>
+
+                <!-- Metrics Dashboard -->
+                <div id="metrics-panel" class="panel">
+                    <h3>📊 Performance Metrics</h3>
+                    <div class="metric-row">
+                        <span class="metric-label">Inventory Efficiency:</span>
+                        <span id="inventory-efficiency" class="metric-value">95%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Average Response Time:</span>
+                        <span id="response-time" class="metric-value">2.3 min</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Storage Utilization:</span>
+                        <span id="storage-utilization" class="metric-value">78%</span>
+                    </div>
+                </div>
+
+                <!-- Event Notifications -->
+                <div id="notifications-panel" class="panel">
+                    <h3>🔔 Recent Events</h3>
+                    <div id="notification-list">
+                        <div class="notification info">System initialized</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Status Bar -->
+        <footer id="status-bar">
+            <div class="status-left">
+                <span id="simulation-time">Time: 00:00</span>
+                <span id="active-events">Events: 0</span>
+            </div>
+            <div class="status-center">
+                <span id="current-view">Current View: Overview</span>
+                <span id="zoom-level">Zoom: 100%</span>
+            </div>
+            <div class="status-right">
+                <span id="fps-counter">FPS: 60</span>
+                <span id="entity-count">Entities: 0</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="hidden">
+        <div class="loading-content">
+            <h2>Initializing Data Center Simulation...</h2>
+            <div class="loading-bar">
+                <div class="loading-progress" id="loading-progress"></div>
+            </div>
+            <p id="loading-status">Setting up environment...</p>
+        </div>
+    </div>
+
+    <script type="module">
+        /**
+         * Base Entity Class
+         * Foundation for all moving objects in the simulation
+         */
+        class Entity {
+            constructor(x = 0, y = 0) {
+                this.id = Math.random().toString(36).substr(2, 9);
+                this.position = { x, y };
+                this.velocity = { x: 0, y: 0 };
+                this.size = { width: 20, height: 20 };
+                this.color = '#00ff88';
+                this.visible = true;
+                this.type = 'entity';
+            }
+
+            update(deltaTime) {
+                this.position.x += this.velocity.x * deltaTime;
+                this.position.y += this.velocity.y * deltaTime;
+                
+                const canvas = document.getElementById('entity-canvas');
+                if (canvas) {
+                    this.position.x = Math.max(0, Math.min(canvas.width - this.size.width, this.position.x));
+                    this.position.y = Math.max(0, Math.min(canvas.height - this.size.height, this.position.y));
+                }
+            }
+
+            render(ctx) {
+                if (!this.visible) return;
+
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.position.x, this.position.y, this.size.width, this.size.height);
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.type, this.position.x + this.size.width / 2, this.position.y + this.size.height / 2 + 3);
+            }
+
+            moveTo(x, y, speed = 100) {
+                const distance = Math.sqrt((x - this.position.x) ** 2 + (y - this.position.y) ** 2);
+                if (distance > 0) {
+                    this.velocity.x = ((x - this.position.x) / distance) * speed;
+                    this.velocity.y = ((y - this.position.y) / distance) * speed;
+                }
+            }
+
+            stop() {
+                this.velocity.x = 0;
+                this.velocity.y = 0;
+            }
+        }
+
+        /**
+         * Hardware Item Class
+         * Represents individual hardware components
+         */
+        class HardwareItem extends Entity {
+            constructor(x, y, type, specifications = {}) {
+                super(x, y);
+                
+                this.hardwareType = type;
+                this.specifications = specifications;
+                this.serialNumber = this.generateSerialNumber();
+                this.status = 'available';
+                this.location = 'loading-bay';
+                this.priority = specifications.priority || 'medium';
+                this.value = specifications.value || 1000;
+                this.weight = specifications.weight || 1.0;
+                
+                this.targetPosition = null;
+                this.movementSpeed = this.calculateMovementSpeed();
+                this.isMoving = false;
+                this.movementQueue = [];
+                
+                this.glowEffect = false;
+                this.isSelected = false;
+                this.animationFrame = 0;
+                
+                this.initializeVisualProperties();
+            }
+
+            generateSerialNumber() {
+                const prefix = this.hardwareType.substring(0, 3).toUpperCase();
+                const number = Math.random().toString().substr(2, 6);
+                return `${prefix}${number}`;
+            }
+
+            calculateMovementSpeed() {
+                const baseSpeed = 50;
+                const weightFactor = Math.max(0.3, 1.0 - (this.weight / 10));
+                const valueFactor = this.value > 5000 ? 0.7 : 1.0;
+                return baseSpeed * weightFactor * valueFactor;
+            }
+
+            initializeVisualProperties() {
+                switch (this.hardwareType) {
+                    case 'GPU':
+                        this.size = { width: 35, height: 20 };
+                        this.color = '#ff6b6b';
+                        break;
+                    case 'SSD':
+                        this.size = { width: 15, height: 12 };
+                        this.color = '#4ecdc4';
+                        break;
+                    case 'CPU':
+                        this.size = { width: 20, height: 20 };
+                        this.color = '#45b7d1';
+                        break;
+                    case 'RAM':
+                        this.size = { width: 25, height: 8 };
+                        this.color = '#96ceb4';
+                        break;
+                    case 'PSU':
+                        this.size = { width: 30, height: 25 };
+                        this.color = '#feca57';
+                        break;
+                    case 'Motherboard':
+                        this.size = { width: 40, height: 30 };
+                        this.color = '#48dbfb';
+                        break;
+                    default:
+                        this.size = { width: 20, height: 20 };
+                        this.color = '#ffffff';
+                }
+            }
+
+            update(deltaTime) {
+                super.update(deltaTime);
+                this.animationFrame += deltaTime * 2;
+                this.processMovementQueue(deltaTime);
+            }
+
+            processMovementQueue(deltaTime) {
+                if (!this.isMoving && this.movementQueue.length > 0) {
+                    const nextMove = this.movementQueue.shift();
+                    this.startMovement(nextMove.x, nextMove.y, nextMove.location);
+                }
+                
+                if (this.isMoving && this.targetPosition) {
+                    const distance = Math.sqrt(
+                        Math.pow(this.targetPosition.x - this.position.x, 2) +
+                        Math.pow(this.targetPosition.y - this.position.y, 2)
+                    );
+                    
+                    if (distance < 2) {
+                        this.position.x = this.targetPosition.x;
+                        this.position.y = this.targetPosition.y;
+                        this.stop();
+                        this.isMoving = false;
+                        this.targetPosition = null;
+                        
+                        if (this.pendingLocationUpdate) {
+                            this.location = this.pendingLocationUpdate;
+                            this.pendingLocationUpdate = null;
+                        }
+                    }
+                }
+            }
+
+            startMovement(x, y, newLocation = null) {
+                this.targetPosition = { x, y };
+                this.moveTo(x, y, this.movementSpeed);
+                this.isMoving = true;
+                this.pendingLocationUpdate = newLocation;
+                this.status = 'in-transit';
+            }
+
+            render(ctx) {
+                if (!this.visible) return;
+
+                ctx.save();
+                
+                if (this.glowEffect || this.isSelected) {
+                    const glowIntensity = 0.5 + 0.3 * Math.sin(this.animationFrame);
+                    ctx.shadowColor = this.color;
+                    ctx.shadowBlur = 15 * glowIntensity;
+                }
+                
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.position.x, this.position.y, this.size.width, this.size.height);
+                
+                const centerX = this.position.x + this.size.width / 2;
+                const centerY = this.position.y + this.size.height / 2;
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 8px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                const abbreviations = {
+                    'GPU': 'GPU', 'SSD': 'SSD', 'CPU': 'CPU',
+                    'RAM': 'RAM', 'PSU': 'PSU', 'Motherboard': 'MB'
+                };
+                
+                ctx.fillText(
+                    abbreviations[this.hardwareType] || this.hardwareType.substr(0, 3),
+                    centerX, centerY
+                );
+                
+                const statusColors = {
+                    'available': '#00ff88', 'reserved': '#ffaa00', 'installed': '#45b7d1',
+                    'maintenance': '#ff6b6b', 'failed': '#ff0000', 'in-transit': '#feca57'
+                };
+                
+                ctx.fillStyle = statusColors[this.status] || '#ffffff';
+                ctx.fillRect(this.position.x, this.position.y - 3, this.size.width, 2);
+                
+                if (this.isSelected) {
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.strokeRect(
+                        this.position.x - 3, this.position.y - 3,
+                        this.size.width + 6, this.size.height + 6
+                    );
+                    ctx.setLineDash([]);
+                }
+                
+                ctx.restore();
+            }
+
+            select() { this.isSelected = true; }
+            deselect() { this.isSelected = false; }
+            
+            isPointInside(x, y) {
+                return x >= this.position.x &&
+                       x <= this.position.x + this.size.width &&
+                       y >= this.position.y &&
+                       y <= this.position.y + this.size.height;
+            }
+        }
+
+        /**
+         * Hardware Factory
+         */
+        class HardwareFactory {
+            static createHardware(type, x, y, specifications = {}) {
+                return new HardwareItem(x, y, type, specifications);
+            }
+
+            static getAvailableTypes() {
+                return ['GPU', 'SSD', 'CPU', 'RAM', 'PSU', 'Motherboard'];
+            }
+
+            static generateRandomHardware(x, y) {
+                const types = this.getAvailableTypes();
+                const randomType = types[Math.floor(Math.random() * types.length)];
+                return this.createHardware(randomType, x, y);
+            }
+        }
+
+        /**
+         * Inventory Manager
+         */
+        class InventoryManager {
+            constructor() {
+                this.items = new Map();
+            }
+
+            addItem(item) {
+                this.items.set(item.id, item);
+                console.log(`📝 Inventory: Added ${item.hardwareType} (${item.serialNumber})`);
+            }
+
+            removeItem(itemId) {
+                const item = this.items.get(itemId);
+                if (item) {
+                    this.items.delete(itemId);
+                    return true;
+                }
+                return false;
+            }
+
+            getAllItems() {
+                return Array.from(this.items.values());
+            }
+
+            getItemsByType(type) {
+                return this.getAllItems().filter(item => item.hardwareType === type);
+            }
+
+            getItemsByStatus(status) {
+                return this.getAllItems().filter(item => item.status === status);
+            }
+        }
+
+        /**
+         * Main Application Class
+         */
+        class DataCenterSimulation {
+            constructor() {
+                console.log('🚀 Initializing Data Center Simulation...');
+                
+                this.canvases = {};
+                this.contexts = {};
+                this.entities = [];
+                this.hardwareItems = [];
+                this.currentLocation = 'overview';
+                this.isRunning = true;
+                this.simulationSpeed = 1;
+                this.simulationTime = 0;
+                this.lastFrameTime = 0;
+                this.frameCount = 0;
+                this.fps = 60;
+                
+                this.inventoryManager = new InventoryManager();
+                this.selectedItem = null;
+                
+                this.camera = {
+                    x: 0, y: 0, zoom: 1,
+                    minZoom: 0.5, maxZoom: 3,
+                    targetZoom: 1, smoothing: 0.1
+                };
+                
+                this.mouse = {
+                    x: 0, y: 0, isDown: false,
+                    lastX: 0, lastY: 0, isPanning: false
+                };
+                
+                this.initializeCanvases();
+                this.initializeEventListeners();
+                this.initializeGameLoop();
+                this.setupDemoHardware();
+                this.showLoadingScreen();
+            }
+
+            initializeCanvases() {
+                const canvasIds = ['background-canvas', 'entity-canvas', 'ui-canvas', 'effect-canvas'];
+                
+                canvasIds.forEach(id => {
+                    const canvas = document.getElementById(id);
+                    if (canvas) {
+                        this.canvases[id] = canvas;
+                        this.contexts[id] = canvas.getContext('2d');
+                        
+                        const dpr = window.devicePixelRatio || 1;
+                        const rect = canvas.getBoundingClientRect();
+                        
+                        canvas.width = rect.width * dpr;
+                        canvas.height = rect.height * dpr;
+                        canvas.style.width = rect.width + 'px';
+                        canvas.style.height = rect.height + 'px';
+                        
+                        this.contexts[id].scale(dpr, dpr);
+                        
+                        console.log(`✅ Canvas initialized: ${id} (${rect.width}x${rect.height})`);
+                    }
+                });
+            }
+
+            initializeEventListeners() {
+                const playPauseBtn = document.getElementById('play-pause-btn');
+                const speedBtn = document.getElementById('speed-btn');
+                const resetBtn = document.getElementById('reset-btn');
+                const resetViewBtn = document.getElementById('reset-view-btn');
+
+                if (playPauseBtn) {
+                    playPauseBtn.addEventListener('click', () => this.toggleSimulation());
+                }
+
+                if (speedBtn) {
+                    speedBtn.addEventListener('click', () => this.cycleSpeed());
+                }
+
+                if (resetBtn) {
+                    resetBtn.addEventListener('click', () => this.resetSimulation());
+                }
+
+                if (resetViewBtn) {
+                    resetViewBtn.addEventListener('click', () => this.resetView());
+                }
+
+                const tabBtns = document.querySelectorAll('.tab-btn');
+                tabBtns.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const location = e.target.getAttribute('data-location');
+                        this.switchLocation(location);
+                    });
+                });
+
+                const entityCanvas = this.canvases['entity-canvas'];
+                if (entityCanvas) {
+                    entityCanvas.addEventListener('click', (e) => this.handleCanvasClick(e));
+                    entityCanvas.addEventListener('mousemove', (e) => this.handleCanvasMouseMove(e));
+                    entityCanvas.addEventListener('wheel', (e) => this.handleCanvasWheel(e));
+                    entityCanvas.addEventListener('mousedown', (e) => this.handleCanvasMouseDown(e));
+                    entityCanvas.addEventListener('mouseup', (e) => this.handleCanvasMouseUp(e));
+                    entityCanvas.addEventListener('mouseleave', (e) => this.handleCanvasMouseLeave(e));
+                }
+
+                window.addEventListener('resize', () => this.handleResize());
+                window.addEventListener('keydown', (e) => this.handleKeyDown(e));
+
+                console.log('✅ Event listeners initialized');
+            }
+
+            initializeGameLoop() {
+                const gameLoop = (currentTime) => {
+                    const deltaTime = (currentTime - this.lastFrameTime) / 1000;
+                    this.lastFrameTime = currentTime;
+                    
+                    this.frameCount++;
+                    if (this.frameCount % 60 === 0) {
+                        this.fps = Math.round(1 / deltaTime);
+                        this.updateFPSDisplay();
+                    }
+                    
+                    if (this.isRunning) {
+                        this.update(deltaTime);
+                    }
+                    
+                    this.render();
+                    requestAnimationFrame(gameLoop);
+                };
+                
+                requestAnimationFrame(gameLoop);
+                console.log('✅ Game loop started');
+            }
+
+            setupDemoHardware() {
+                const demoItems = [
+                    { type: 'GPU', x: 100, y: 150, location: 'loading-bay' },
+                    { type: 'GPU', x: 140, y: 150, location: 'loading-bay' },
+                    { type: 'SSD', x: 200, y: 180, location: 'loading-bay' },
+                    { type: 'SSD', x: 220, y: 180, location: 'loading-bay' },
+                    { type: 'CPU', x: 280, y: 200, location: 'loading-bay' },
+                    { type: 'RAM', x: 320, y: 200, location: 'loading-bay' },
+                    { type: 'PSU', x: 500, y: 250, location: 'storage-room' },
+                    { type: 'Motherboard', x: 550, y: 280, location: 'storage-room' },
+                    { type: 'GPU', x: 600, y: 250, location: 'storage-room' },
+                    { type: 'CPU', x: 800, y: 300, location: 'server-floor', status: 'installed' },
+                    { type: 'RAM', x: 850, y: 320, location: 'server-floor', status: 'installed' }
+                ];
+
+                demoItems.forEach(item => {
+                    const hardware = HardwareFactory.createHardware(item.type, item.x, item.y);
+                    hardware.location = item.location;
+                    if (item.status) hardware.status = item.status;
+                    
+                    this.hardwareItems.push(hardware);
+                    this.entities.push(hardware);
+                    this.inventoryManager.addItem(hardware);
+                });
+
+                console.log(`✅ Created ${demoItems.length} demo hardware items`);
+                this.updateEntityCount();
+            }
+
+            update(deltaTime) {
+                const adjustedDelta = deltaTime * this.simulationSpeed;
+                
+                this.simulationTime += adjustedDelta;
+                this.updateTimeDisplay();
+                
+                this.entities.forEach(entity => {
+                    if (entity.update) {
+                        entity.update(adjustedDelta);
+                    }
+                });
+                
+                this.updateCamera(adjustedDelta);
+                
+                if (Math.floor(this.simulationTime) % 3 === 0 && this.frameCount % 180 === 0) {
+                    this.updateAIStatus();
+                }
+                
+                this.processEvents(adjustedDelta);
+            }
+
+            render() {
+                Object.keys(this.contexts).forEach(canvasId => {
+                    const ctx = this.contexts[canvasId];
+                    const canvas = this.canvases[canvasId];
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                });
+
+                this.applyCameraTransform('background-canvas');
+                this.applyCameraTransform('entity-canvas');
+
+                this.renderBackground();
+                this.renderEntities();
+                
+                this.restoreCameraTransform('background-canvas');
+                this.restoreCameraTransform('entity-canvas');
+                
+                this.renderUI();
+                this.renderEffects();
+            }
+
+            renderBackground() {
+                const ctx = this.contexts['background-canvas'];
+                if (!ctx) return;
+
+                ctx.strokeStyle = 'rgba(0, 255, 136, 0.2)';
+                ctx.lineWidth = 1;
+
+                const canvas = this.canvases['background-canvas'];
+                const gridSize = Math.max(25, 50 / this.camera.zoom);
+                
+                if (this.camera.zoom > 0.5) {
+                    for (let x = 0; x < canvas.width / this.camera.zoom + Math.abs(this.camera.x / this.camera.zoom); x += gridSize) {
+                        ctx.beginPath();
+                        ctx.moveTo(x - Math.abs(this.camera.x / this.camera.zoom), 0);
+                        ctx.lineTo(x - Math.abs(this.camera.x / this.camera.zoom), canvas.height / this.camera.zoom);
+                        ctx.stroke();
+                    }
+                    
+                    for (let y = 0; y < canvas.height / this.camera.zoom + Math.abs(this.camera.y / this.camera.zoom); y += gridSize) {
+                        ctx.beginPath();
+                        ctx.moveTo(0, y - Math.abs(this.camera.y / this.camera.zoom));
+                        ctx.lineTo(canvas.width / this.camera.zoom, y - Math.abs(this.camera.y / this.camera.zoom));
+                        ctx.stroke();
+                    }
+                }
+
+                this.renderLocationLayout(ctx);
+            }
+
+            renderLocationLayout(ctx) {
+                const canvas = this.canvases['background-canvas'];
+                const width = canvas.width;
+                const height = canvas.height;
+
+                switch (this.currentLocation) {
+                    case 'overview':
+                        this.renderOverviewLayout(ctx, width, height);
+                        break;
+                    case 'loading-bay':
+                        this.renderLoadingBayLayout(ctx, width, height);
+                        break;
+                    case 'storage-room':
+                        this.renderStorageRoomLayout(ctx, width, height);
+                        break;
+                    case 'server-floor':
+                        this.renderServerFloorLayout(ctx, width, height);
+                        break;
+                }
+            }
+
+            renderOverviewLayout(ctx, width, height) {
+                ctx.fillStyle = '#00ff88';
+                ctx.font = 'bold 28px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Data Center Management Overview', width / 2, 50);
+
+                const zoneWidth = (width - 120) / 3;
+                const zoneHeight = height - 200;
+                const startY = 100;
+
+                this.drawLocationZone(ctx, 40, startY, zoneWidth, zoneHeight, 'Loading Bay', '#ff6b6b', [
+                    'Truck Arrivals',
+                    'Pallet Staging',
+                    'Incoming Inventory',
+                    'Manifest Processing'
+                ]);
+
+                this.drawLocationZone(ctx, 60 + zoneWidth, startY, zoneWidth, zoneHeight, 'Storage Room', '#4ecdc4', [
+                    'AI-Optimized Layout',
+                    'Smart Inventory',
+                    'Demand Forecasting',
+                    'Efficiency Metrics'
+                ]);
+
+                this.drawLocationZone(ctx, 80 + (zoneWidth * 2), startY, zoneWidth, zoneHeight, 'Server Floor', '#45b7d1', [
+                    'Active Server Racks',
+                    'Health Monitoring',
+                    'Predictive Maintenance',
+                    'Capacity Planning'
+                ]);
+
+                this.drawWorkflowArrows(ctx, width, height);
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('🖱️ Click hardware to select • Shift+G/S/C/R to create items • Shift+M to move selected • Del to delete', width / 2, height - 30);
+            }
+
+            renderLoadingBayLayout(ctx, width, height) {
+                ctx.fillStyle = '#ff6b6b';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('🚛 Loading Bay Operations', width / 2, 40);
+            }
+
+            renderStorageRoomLayout(ctx, width, height) {
+                ctx.fillStyle = '#4ecdc4';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('🏪 AI-Optimized Storage Room', width / 2, 40);
+            }
+
+            renderServerFloorLayout(ctx, width, height) {
+                ctx.fillStyle = '#45b7d1';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('🖥️ Server Floor Operations', width / 2, 40);
+            }
+
+            drawLocationZone(ctx, x, y, width, height, title, color, features) {
+                const gradient = ctx.createLinearGradient(x, y, x, y + height);
+                gradient.addColorStop(0, color + '40');
+                gradient.addColorStop(1, color + '10');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(x, y, width, height);
+
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x, y, width, height);
+
+                ctx.fillStyle = color;
+                ctx.font = 'bold 18px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(title, x + width / 2, y + 30);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'left';
+                features.forEach((feature, index) => {
+                    ctx.fillText(`• ${feature}`, x + 20, y + 70 + (index * 25));
+                });
+
+                ctx.font = '48px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = color + '80';
+                const icons = { 'Loading Bay': '🚛', 'Storage Room': '📦', 'Server Floor': '🖥️' };
+                ctx.fillText(icons[title] || '📊', x + width / 2, y + height - 40);
+            }
+
+            drawWorkflowArrows(ctx, width, height) {
+                ctx.strokeStyle = '#00ff88';
+                ctx.lineWidth = 4;
+                ctx.setLineDash([10, 5]);
+
+                const zoneWidth = (width - 120) / 3;
+                const arrowY = height - 50;
+
+                this.drawArrow(ctx, 40 + zoneWidth, arrowY, 60 + zoneWidth, arrowY);
+                this.drawArrow(ctx, 60 + (zoneWidth * 2), arrowY, 80 + (zoneWidth * 2), arrowY);
+
+                ctx.setLineDash([]);
+            }
+
+            drawArrow(ctx, fromX, fromY, toX, toY) {
+                const headLength = 15;
+                const angle = Math.atan2(toY - fromY, toX - fromX);
+
+                ctx.beginPath();
+                ctx.moveTo(fromX, fromY);
+                ctx.lineTo(toX, toY);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(toX, toY);
+                ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6));
+                ctx.moveTo(toX, toY);
+                ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), toY - headLength * Math.sin(angle + Math.PI / 6));
+                ctx.stroke();
+            }
+
+            renderEntities() {
+                const ctx = this.contexts['entity-canvas'];
+                if (!ctx) return;
+
+                this.entities.forEach(entity => {
+                    if (entity.render && entity.visible) {
+                        entity.render(ctx);
+                    }
+                });
+            }
+
+            renderUI() {
+                // Canvas-based UI elements
+            }
+
+            renderEffects() {
+                // Particle effects and animations
+            }
+
+            // Control Methods
+            toggleSimulation() {
+                this.isRunning = !this.isRunning;
+                const btn = document.getElementById('play-pause-btn');
+                if (btn) {
+                    btn.textContent = this.isRunning ? '⏸️ Pause' : '▶️ Play';
+                }
+                this.addNotification(`Simulation ${this.isRunning ? 'resumed' : 'paused'}`, 'info');
+            }
+
+            cycleSpeed() {
+                const speeds = [0.5, 1, 2, 4];
+                const currentIndex = speeds.indexOf(this.simulationSpeed);
+                this.simulationSpeed = speeds[(currentIndex + 1) % speeds.length];
+                
+                const btn = document.getElementById('speed-btn');
+                if (btn) {
+                    btn.textContent = `${this.simulationSpeed}x Speed`;
+                }
+                this.addNotification(`Speed changed to ${this.simulationSpeed}x`, 'info');
+            }
+
+            resetSimulation() {
+                this.simulationTime = 0;
+                this.entities = [];
+                this.hardwareItems = [];
+                this.selectedItem = null;
+                
+                this.inventoryManager = new InventoryManager();
+                this.setupDemoHardware();
+                
+                this.addNotification('Simulation reset', 'info');
+                this.hideHardwareDetails();
+                console.log('🔄 Simulation reset');
+            }
+
+            resetView() {
+                this.camera.x = 0;
+                this.camera.y = 0;
+                this.camera.zoom = 1;
+                this.camera.targetZoom = 1;
+                this.addNotification('View reset to default', 'info');
+            }
+
+            switchLocation(location) {
+                this.currentLocation = location;
+                
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.querySelector(`[data-location="${location}"]`).classList.add('active');
+                
+                const statusElement = document.getElementById('current-view');
+                if (statusElement) {
+                    statusElement.textContent = `Current View: ${location.charAt(0).toUpperCase() + location.slice(1).replace('-', ' ')}`;
+                }
+                
+                this.addNotification(`Switched to ${location}`, 'info');
+            }
+
+            // Event Handlers
+            handleCanvasClick(event) {
+                if (!this.mouse.isPanning) {
+                    const rect = event.target.getBoundingClientRect();
+                    const x = (event.clientX - rect.left - this.camera.x) / this.camera.zoom;
+                    const y = (event.clientY - rect.top - this.camera.y) / this.camera.zoom;
+                    
+                    let clickedItem = null;
+                    for (let i = this.hardwareItems.length - 1; i >= 0; i--) {
+                        const item = this.hardwareItems[i];
+                        if (item.isPointInside && item.isPointInside(x, y)) {
+                            clickedItem = item;
+                            break;
+                        } else if (x >= item.position.x && x <= item.position.x + item.size.width &&
+                                  y >= item.position.y && y <= item.position.y + item.size.height) {
+                            clickedItem = item;
+                            break;
+                        }
+                    }
+                    
+                    if (clickedItem) {
+                        this.selectHardwareItem(clickedItem);
+                        this.addNotification(`Selected ${clickedItem.hardwareType} (${clickedItem.serialNumber})`, 'info');
+                    } else {
+                        this.deselectAll();
+                        console.log(`Canvas clicked at world position (${x.toFixed(1)}, ${y.toFixed(1)})`);
+                        this.addNotification(`Clicked at (${x.toFixed(0)}, ${y.toFixed(0)})`, 'info');
+                    }
+                }
+            }
+
+            handleCanvasMouseMove(event) {
+                const rect = event.target.getBoundingClientRect();
+                this.mouse.x = event.clientX - rect.left;
+                this.mouse.y = event.clientY - rect.top;
+                
+                if (this.mouse.isDown) {
+                    const deltaX = this.mouse.x - this.mouse.lastX;
+                    const deltaY = this.mouse.y - this.mouse.lastY;
+                    
+                    this.camera.x += deltaX;
+                    this.camera.y += deltaY;
+                    
+                    this.mouse.lastX = this.mouse.x;
+                    this.mouse.lastY = this.mouse.y;
+                    
+                    this.mouse.isPanning = true;
+                }
+            }
+
+            handleCanvasWheel(event) {
+                event.preventDefault();
+                
+                const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1;
+                const newZoom = Math.max(this.camera.minZoom, 
+                                Math.min(this.camera.maxZoom, this.camera.zoom * zoomFactor));
+                
+                if (newZoom !== this.camera.zoom) {
+                    const mouseX = this.mouse.x;
+                    const mouseY = this.mouse.y;
+                    
+                    const worldX = (mouseX - this.camera.x) / this.camera.zoom;
+                    const worldY = (mouseY - this.camera.y) / this.camera.zoom;
+                    
+                    this.camera.zoom = newZoom;
+                    
+                    this.camera.x = mouseX - worldX * this.camera.zoom;
+                    this.camera.y = mouseY - worldY * this.camera.zoom;
+                    
+                    this.addNotification(`Zoom: ${(this.camera.zoom * 100).toFixed(0)}%`, 'info');
+                }
+            }
+
+            handleCanvasMouseDown(event) {
+                this.mouse.isDown = true;
+                this.mouse.isPanning = false;
+                this.mouse.lastX = this.mouse.x;
+                this.mouse.lastY = this.mouse.y;
+                
+                event.target.style.cursor = 'grabbing';
+            }
+
+            handleCanvasMouseUp(event) {
+                this.mouse.isDown = false;
+                event.target.style.cursor = 'grab';
+                
+                setTimeout(() => {
+                    this.mouse.isPanning = false;
+                }, 100);
+            }
+
+            handleCanvasMouseLeave(event) {
+                this.mouse.isDown = false;
+                this.mouse.isPanning = false;
+                event.target.style.cursor = 'grab';
+            }
+
+            handleResize() {
+                this.initializeCanvases();
+                console.log('📐 Canvas resized');
+            }
+
+            handleKeyDown(event) {
+                switch(event.key.toLowerCase()) {
+                    case 'g':
+                        if (event.shiftKey) {
+                            this.createRandomHardware('GPU');
+                        }
+                        break;
+                    case 's':
+                        if (event.shiftKey) {
+                            this.createRandomHardware('SSD');
+                        }
+                        break;
+                    case 'c':
+                        if (event.shiftKey) {
+                            this.createRandomHardware('CPU');
+                        }
+                        break;
+                    case 'r':
+                        if (event.shiftKey) {
+                            this.createRandomHardware('RAM');
+                        }
+                        break;
+                    case 'm':
+                        if (event.shiftKey && this.selectedItem) {
+                            this.demonstrateMovement();
+                        }
+                        break;
+                    case 'delete':
+                        if (this.selectedItem) {
+                            this.deleteSelectedItem();
+                        }
+                        break;
+                    case 'escape':
+                        this.deselectAll();
+                        break;
+                }
+            }
+
+            // Utility Methods
+            updateTimeDisplay() {
+                const minutes = Math.floor(this.simulationTime / 60);
+                const seconds = Math.floor(this.simulationTime % 60);
+                const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                const timeElement = document.getElementById('simulation-time');
+                if (timeElement) {
+                    timeElement.textContent = `Time: ${timeString}`;
+                }
+            }
+
+            updateFPSDisplay() {
+                const fpsElement = document.getElementById('fps-counter');
+                if (fpsElement) {
+                    fpsElement.textContent = `FPS: ${this.fps}`;
+                }
+            }
+
+            updateEntityCount() {
+                const entityElement = document.getElementById('entity-count');
+                if (entityElement) {
+                    entityElement.textContent = `Entities: ${this.entities.length}`;
+                }
+            }
+
+            updateAIStatus() {
+                const aiTaskElement = document.getElementById('ai-current-task');
+                if (aiTaskElement) {
+                    const availableCount = this.inventoryManager.getItemsByStatus('available').length;
+                    const inTransitCount = this.inventoryManager.getItemsByStatus('in-transit').length;
+                    
+                    if (inTransitCount > 0) {
+                        aiTaskElement.textContent = `Moving ${inTransitCount} items to optimize layout...`;
+                    } else if (availableCount < 5) {
+                        aiTaskElement.textContent = 'Analyzing low inventory levels for reorder...';
+                    } else {
+                        aiTaskElement.textContent = `Monitoring ${this.hardwareItems.length} hardware items...`;
+                    }
+                }
+
+                this.updateMetricsDisplay();
+            }
+
+            updateMetricsDisplay() {
+                const stats = this.inventoryManager.getItemsByType('GPU').length > 0 ? 
+                    this.calculateEfficiencyMetrics() : this.getDefaultMetrics();
+
+                const efficiencyElement = document.getElementById('inventory-efficiency');
+                const responseTimeElement = document.getElementById('response-time');
+                const utilizationElement = document.getElementById('storage-utilization');
+
+                if (efficiencyElement) efficiencyElement.textContent = `${stats.efficiency}%`;
+                if (responseTimeElement) responseTimeElement.textContent = `${stats.responseTime} min`;
+                if (utilizationElement) utilizationElement.textContent = `${stats.utilization}%`;
+            }
+
+            calculateEfficiencyMetrics() {
+                const totalItems = this.hardwareItems.length;
+                const installedItems = this.inventoryManager.getItemsByStatus('installed').length;
+                
+                return {
+                    efficiency: Math.max(85, Math.min(99, 90 + Math.random() * 9)),
+                    responseTime: (2.0 + Math.random() * 1.5).toFixed(1),
+                    utilization: Math.floor(65 + (installedItems / totalItems) * 35)
+                };
+            }
+
+            getDefaultMetrics() {
+                return {
+                    efficiency: 95,
+                    responseTime: '2.3',
+                    utilization: 78
+                };
+            }
+
+            updateCamera(deltaTime) {
+                if (Math.abs(this.camera.targetZoom - this.camera.zoom) > 0.01) {
+                    this.camera.zoom += (this.camera.targetZoom - this.camera.zoom) * this.camera.smoothing;
+                }
+                
+                const canvas = this.canvases['background-canvas'];
+                if (canvas) {
+                    const maxPanX = canvas.width * 0.5;
+                    const maxPanY = canvas.height * 0.5;
+                    
+                    this.camera.x = Math.max(-maxPanX * this.camera.zoom, 
+                                   Math.min(maxPanX * this.camera.zoom, this.camera.x));
+                    this.camera.y = Math.max(-maxPanY * this.camera.zoom, 
+                                   Math.min(maxPanY * this.camera.zoom, this.camera.y));
+                }
+                
+                const zoomElement = document.getElementById('zoom-level');
+                if (zoomElement) {
+                    zoomElement.textContent = `Zoom: ${(this.camera.zoom * 100).toFixed(0)}%`;
+                }
+            }
+
+            applyCameraTransform(canvasId) {
+                const ctx = this.contexts[canvasId];
+                if (ctx) {
+                    ctx.save();
+                    ctx.translate(this.camera.x, this.camera.y);
+                    ctx.scale(this.camera.zoom, this.camera.zoom);
+                }
+            }
+
+            restoreCameraTransform(canvasId) {
+                const ctx = this.contexts[canvasId];
+                if (ctx) {
+                    ctx.restore();
+                }
+            }
+
+            processEvents(deltaTime) {
+                if (this.frameCount % 600 === 0) {
+                    this.triggerRandomMovement();
+                }
+                
+                if (this.frameCount % 1800 === 0) {
+                    this.simulateTruckArrival();
+                }
+            }
+
+            triggerRandomMovement() {
+                const availableItems = this.inventoryManager.getItemsByStatus('available');
+                if (availableItems.length > 0) {
+                    const randomItem = availableItems[Math.floor(Math.random() * availableItems.length)];
+                    const canvas = this.canvases['entity-canvas'];
+                    
+                    if (canvas && randomItem) {
+                        const targetX = Math.random() * (canvas.width / this.camera.zoom - 100) + 50;
+                        const targetY = Math.random() * (canvas.height / this.camera.zoom - 100) + 100;
+                        
+                        randomItem.startMovement(targetX, targetY);
+                        this.addNotification(`AI: Optimizing ${randomItem.hardwareType} placement`, 'info');
+                    }
+                }
+            }
+
+            simulateTruckArrival() {
+                const newItems = Math.floor(Math.random() * 3) + 1;
+                
+                for (let i = 0; i < newItems; i++) {
+                    setTimeout(() => {
+                        this.createRandomHardware();
+                    }, i * 1000);
+                }
+                
+                this.addNotification(`🚛 Truck arrival: ${newItems} items delivered`, 'success');
+            }
+
+            selectHardwareItem(item) {
+                this.hardwareItems.forEach(hw => hw.deselect());
+                item.select();
+                this.selectedItem = item;
+                this.showHardwareDetails(item);
+            }
+
+            deselectAll() {
+                this.hardwareItems.forEach(hw => hw.deselect());
+                this.selectedItem = null;
+                this.hideHardwareDetails();
+            }
+
+            showHardwareDetails(item) {
+                const thoughtBubble = document.getElementById('ai-thought-bubble');
+                const bubbleContent = document.querySelector('.bubble-content');
+                
+                if (thoughtBubble && bubbleContent) {
+                    bubbleContent.innerHTML = `
+                        <strong>${item.hardwareType}</strong><br>
+                        Serial: ${item.serialNumber}<br>
+                        Status: ${item.status}<br>
+                        Location: ${item.location}<br>
+                        Value: $${item.value}
+                    `;
+                    thoughtBubble.classList.remove('hidden');
+                }
+            }
+
+            hideHardwareDetails() {
+                const thoughtBubble = document.getElementById('ai-thought-bubble');
+                if (thoughtBubble) {
+                    thoughtBubble.classList.add('hidden');
+                }
+            }
+
+            createRandomHardware(type = null) {
+                const canvas = this.canvases['entity-canvas'];
+                if (!canvas) return;
+
+                const x = Math.random() * (canvas.width / this.camera.zoom - 100) + 50;
+                const y = Math.random() * (canvas.height / this.camera.zoom - 100) + 100;
+
+                const hardware = type ? 
+                    HardwareFactory.createHardware(type, x, y) : 
+                    HardwareFactory.generateRandomHardware(x, y);
+                
+                this.hardwareItems.push(hardware);
+                this.entities.push(hardware);
+                this.inventoryManager.addItem(hardware);
+                
+                this.addNotification(`Created ${hardware.hardwareType} (${hardware.serialNumber})`, 'success');
+                this.updateEntityCount();
+            }
+
+            demonstrateMovement() {
+                if (!this.selectedItem) return;
+
+                const canvas = this.canvases['entity-canvas'];
+                if (!canvas) return;
+
+                const targetX = Math.random() * (canvas.width / this.camera.zoom - 100) + 50;
+                const targetY = Math.random() * (canvas.height / this.camera.zoom - 100) + 100;
+
+                this.selectedItem.startMovement(targetX, targetY);
+                this.addNotification(`Moving ${this.selectedItem.hardwareType} to new location`, 'info');
+            }
+
+            deleteSelectedItem() {
+                if (!this.selectedItem) return;
+
+                const item = this.selectedItem;
+                
+                const entityIndex = this.entities.indexOf(item);
+                if (entityIndex >= 0) {
+                    this.entities.splice(entityIndex, 1);
+                }
+                
+                const hardwareIndex = this.hardwareItems.indexOf(item);
+                if (hardwareIndex >= 0) {
+                    this.hardwareItems.splice(hardwareIndex, 1);
+                }
+                
+                this.inventoryManager.removeItem(item.id);
+                
+                this.addNotification(`Deleted ${item.hardwareType} (${item.serialNumber})`, 'warning');
+                this.deselectAll();
+                this.updateEntityCount();
+            }
+
+            addNotification(message, type = 'info') {
+                const notificationList = document.getElementById('notification-list');
+                if (!notificationList) return;
+
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+                
+                notificationList.insertBefore(notification, notificationList.firstChild);
+                
+                while (notificationList.children.length > 10) {
+                    notificationList.removeChild(notificationList.lastChild);
+                }
+            }
+
+            showLoadingScreen() {
+                const loadingScreen = document.getElementById('loading-screen');
+                const progressBar = document.getElementById('loading-progress');
+                const statusElement = document.getElementById('loading-status');
+                
+                if (loadingScreen) {
+                    loadingScreen.classList.remove('hidden');
+                }
+
+                let progress = 0;
+                const loadingSteps = [
+                    'Initializing canvas layers...',
+                    'Setting up hardware entities...',
+                    'Loading inventory management...',
+                    'Preparing interaction systems...',
+                    'Finalizing demo setup...'
+                ];
+
+                const loadingInterval = setInterval(() => {
+                    progress += 20;
+                    
+                    if (progressBar) {
+                        progressBar.style.width = `${progress}%`;
+                    }
+                    
+                    if (statusElement && loadingSteps[progress / 20 - 1]) {
+                        statusElement.textContent = loadingSteps[progress / 20 - 1];
+                    }
+                    
+                    if (progress >= 100) {
+                        clearInterval(loadingInterval);
+                        setTimeout(() => {
+                            if (loadingScreen) {
+                                loadingScreen.classList.add('hidden');
+                            }
+                            this.addNotification('Simulation ready!', 'success');
+                            console.log('✅ Simulation fully initialized');
+                        }, 500);
+                    }
+                }, 300);
+            }
+        }
+
+        // Initialize the application when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🌟 DOM loaded, starting simulation...');
+            window.simulation = new DataCenterSimulation();
+        });
+
+        // Export for external access
+        window.Entity = Entity;
+        window.HardwareItem = HardwareItem;
+        window.HardwareFactory = HardwareFactory;
+        window.InventoryManager = InventoryManager;
+    </script>
+</body>
+</html>

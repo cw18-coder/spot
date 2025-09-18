@@ -1,0 +1,23 @@
+/* Animation-specific CSS - Future enhancements */
+
+/* Keyframe animations */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* Hardware movement animations */
+.hardware-moving {
+    transition: all 0.3s ease;
+}
+
+/* Zone highlight animations */
+.zone-highlight {
+    animation: pulse 2s infinite;
+}
