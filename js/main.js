@@ -451,26 +451,11 @@ class DataCenterSimulation {
         const startY = 90;
         const spacing = 20;  // Space between zones
 
-        this.drawLocationZone(ctx, 30, startY, zoneWidth, zoneHeight, 'Loading Bay', '#ff6b6b', [
-            'Truck Arrivals',
-            'Pallet Staging',
-            'Incoming Inventory',
-            'Manifest Processing'
-        ]);
+        this.drawLocationZone(ctx, 30, startY, zoneWidth, zoneHeight, 'Loading Bay', '#ff6b6b', []);
 
-        this.drawLocationZone(ctx, 30 + zoneWidth + spacing, startY, zoneWidth, zoneHeight, 'Storage Room', '#4ecdc4', [
-            'AI-Optimized Layout',
-            'Smart Inventory',
-            'Demand Forecasting',
-            'Efficiency Metrics'
-        ]);
+        this.drawLocationZone(ctx, 30 + zoneWidth + spacing, startY, zoneWidth, zoneHeight, 'Storage Room', '#4ecdc4', []);
 
-        this.drawLocationZone(ctx, 30 + (zoneWidth + spacing) * 2, startY, zoneWidth, zoneHeight, 'Server Floor', '#45b7d1', [
-            'Active Server Racks',
-            'Health Monitoring',
-            'Predictive Maintenance',
-            'Capacity Planning'
-        ]);
+        this.drawLocationZone(ctx, 30 + (zoneWidth + spacing) * 2, startY, zoneWidth, zoneHeight, 'Server Floor', '#45b7d1', []);
 
         this.drawWorkflowArrows(ctx, width, height);
         
