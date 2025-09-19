@@ -298,6 +298,16 @@ class DataCenterSimulation {
     setupMovementDemonstration() {
         if (!this.movementSystem) return;
 
+        // Notify user about scrollable notification panel
+        setTimeout(() => {
+            this.addNotification('📊 Welcome! The info panel is scrollable - check AI Agent Status at top and AI Planning Center at bottom', 'info');
+        }, 2000);
+
+        // Add periodic status updates
+        setTimeout(() => {
+            this.addNotification('🤖 AI Agent Status now updating every 1.5 seconds with live simulation data', 'info');
+        }, 4000);
+
         // Simulate some items going through QC process
         setTimeout(() => {
             // Find items in loading dock zones and queue them for QC
@@ -393,7 +403,8 @@ class DataCenterSimulation {
         
         this.updateCamera(adjustedDelta);
         
-        if (Math.floor(this.simulationTime) % 3 === 0 && this.frameCount % 180 === 0) {
+        // Update AI status more frequently for dynamic feel
+        if (this.frameCount % 90 === 0) { // Every 1.5 seconds
             this.updateAIStatus();
         }
         
@@ -1051,16 +1062,29 @@ class DataCenterSimulation {
 
     updateAIStatus() {
         const aiTaskElement = document.getElementById('ai-current-task');
+        const aiStatusPanel = document.getElementById('ai-status-panel');
         
         // Update with new AI Agent system if available
         if (this.aiAgent && aiTaskElement) {
+            // Add visual indication of updates
+            if (aiStatusPanel) {
+                aiStatusPanel.classList.add('ai-status-updating');
+                setTimeout(() => {
+                    aiStatusPanel.classList.remove('ai-status-updating');
+                }, 1000);
+            }
+
             const status = this.aiAgent.getStatus();
             const metrics = this.aiAgent.metrics;
+            
+            // Generate dynamic status messages based on current simulation state
+            const statusMessages = this.generateDynamicAIStatus();
+            const currentMessage = statusMessages[Math.floor(Date.now() / 3000) % statusMessages.length];
             
             if (status.currentTask) {
                 aiTaskElement.textContent = `${status.state}: ${status.currentTask}`;
             } else {
-                aiTaskElement.textContent = `AI Agent ${status.state} - Movement System Active`;
+                aiTaskElement.textContent = currentMessage;
             }
             
             // Update the thought bubble with movement system status
@@ -1104,6 +1128,60 @@ class DataCenterSimulation {
                 aiTaskElement.textContent = 'AI Agent idle - waiting for next task...';
             }
         }
+    }
+
+    /**
+     * Generate dynamic AI status messages based on current simulation state
+     */
+    generateDynamicAIStatus() {
+        const currentTime = new Date().toLocaleTimeString();
+        const itemCount = this.hardwareItems?.length || 0;
+        const qcQueueLength = this.movementSystem?.qcQueue?.length || 0;
+        const recycleQueueLength = this.movementSystem?.recyclingQueue?.length || 0;
+        const totalZones = this.zoneManager?.getAllZones()?.length || 0;
+        const activeEntities = this.entities?.length || 0;
+        
+        const statusMessages = [
+            `🤖 AI Agent Active - Monitoring ${itemCount} hardware items across ${totalZones} zones`,
+            `🔍 Analyzing movement patterns and optimization opportunities`,
+            `📊 Real-time QC monitoring: ${qcQueueLength} items awaiting inspection`,
+            `♻️ Recycling management: ${recycleQueueLength} items in processing queue`,
+            `🏭 Optimizing workflow efficiency - ${activeEntities} active entities`,
+            `🚛 Coordinating dock operations and logistics planning`,
+            `⚡ Live decision engine active - ${currentTime}`,
+            `🔄 Enforcing strict movement hierarchy: dock→QC→storage→server→recycle`,
+            `📋 Continuous optimization cycle - adapting to real-time conditions`,
+            `🎯 Maintaining operational efficiency target: 95%+`,
+            `🔗 Inter-zone coordination and capacity balancing`,
+            `📈 Performance metrics tracking and trend analysis`
+        ];
+
+        // Priority messages based on current state
+        if (qcQueueLength > 5) {
+            return [`⚠️ HIGH PRIORITY: QC queue overload - ${qcQueueLength} items pending - optimizing flow`];
+        }
+        if (recycleQueueLength > 3) {
+            return [`♻️ ACTIVE: Heavy recycling operations - ${recycleQueueLength} items processing`];
+        }
+        if (!this.isRunning) {
+            return [`⏸️ STANDBY: Simulation paused - AI monitoring systems on hold`];
+        }
+        if (this.simulationSpeed > 2) {
+            return [`🚀 HIGH SPEED: Operating at ${this.simulationSpeed}x speed - enhanced processing mode`];
+        }
+
+        // Contextual messages based on recent activity
+        const recentNotifications = document.getElementById('notification-list')?.children?.length || 0;
+        if (recentNotifications > 10) {
+            statusMessages.push(`📢 High activity detected: ${recentNotifications} recent events logged`);
+        }
+
+        // Add frame rate monitoring
+        if (this.fps < 30) {
+            statusMessages.push(`⚡ Performance optimization: adjusting to ${this.fps} FPS`);
+        }
+
+        return statusMessages;
     }
 
 

@@ -165,7 +165,31 @@ canvas {
 }
 
 #ai-status-panel {
-    min-height: 120px;
+    min-height: 140px;
+}
+
+#ai-current-task {
+    color: #ffffff;
+    font-style: italic;
+    margin-bottom: 10px;
+    animation: aiStatusPulse 2s ease-in-out infinite;
+}
+
+@keyframes aiStatusPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* AI Status animation for dynamic updates */
+.ai-status-updating {
+    background: linear-gradient(90deg, rgba(0, 255, 136, 0.1), rgba(0, 212, 255, 0.1), rgba(0, 255, 136, 0.1));
+    background-size: 200% 100%;
+    animation: aiStatusGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes aiStatusGlow {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
 }
 
 #metrics-panel {
@@ -189,6 +213,29 @@ canvas {
     max-height: 300px;
     overflow-y: auto;
     flex: 1;
+    /* Make scrollbar always visible for better UX */
+    scrollbar-width: thin;
+    scrollbar-color: #00ff88 rgba(0, 0, 0, 0.3);
+}
+
+/* Enhanced scrollbar styling for notifications panel */
+#notifications-panel::-webkit-scrollbar {
+    width: 12px;
+}
+
+#notifications-panel::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 6px;
+}
+
+#notifications-panel::-webkit-scrollbar-thumb {
+    background: linear-gradient(45deg, #00ff88, #00d4ff);
+    border-radius: 6px;
+    box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.3);
+}
+
+#notifications-panel::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(45deg, #00d4ff, #00ff88);
 }
 
 .panel h3 {
@@ -197,6 +244,18 @@ canvas {
     font-size: 1.1em;
     border-bottom: 1px solid rgba(0, 255, 136, 0.3);
     padding-bottom: 5px;
+}
+
+.scroll-indicator {
+    float: right;
+    font-size: 0.8em;
+    opacity: 0.7;
+    animation: scrollIndicatorPulse 2s ease-in-out infinite;
+}
+
+@keyframes scrollIndicatorPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.9; }
 }
 
 /* Individual panel content styling */
@@ -246,11 +305,7 @@ canvas {
     background: #00ff88;
 }
 
-#ai-current-task {
-    color: #ffffff;
-    font-style: italic;
-    margin-bottom: 10px;
-}
+
 
 .metric-row {
     display: flex;
