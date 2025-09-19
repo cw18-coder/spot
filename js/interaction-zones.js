@@ -689,10 +689,163 @@ class ZoneManager {
     }
 }
 
+/**
+ * Recycle Bin Zone
+ * Large rectangular bin for recycled and failed hardware
+ * Spans across storage room and server floor areas
+ */
+class RecycleBinZone extends InteractionZone {
+    constructor() {
+        // Position will be calculated based on existing zones
+        super(0, 0, 0, 0, 'recycle-bin', {
+            capacity: 100,
+            color: '#ff6b6b',
+            borderColor: '#cc0000',
+            label: '♻️ RECYCLE BIN',
+            acceptedTypes: ['all'] // Accepts all hardware types
+        });
+        
+        this.icon = '♻️';
+        this.isAutoPositioned = true;
+        
+        console.log('♻️ Recycle Bin Zone created');
+    }
+
+    /**
+     * Position the recycle bin based on existing storage and server zones
+     */
+    autoPosition(zoneManager) {
+        const allZones = zoneManager.getAllZones();
+        const storageZones = allZones.filter(z => z.type === 'storage-bin');
+        const serverZones = allZones.filter(z => z.type === 'server-rack');
+        
+        if (storageZones.length === 0 || serverZones.length === 0) {
+            console.warn('Cannot position recycle bin - missing storage or server zones');
+            return;
+        }
+
+        // Calculate bounding box for all storage and server zones
+        const combinedZones = [...storageZones, ...serverZones];
+        const minX = Math.min(...combinedZones.map(z => z.position.x));
+        const maxX = Math.max(...combinedZones.map(z => z.position.x + z.size.width));
+        const maxY = Math.max(...combinedZones.map(z => z.position.y + z.size.height));
+        
+        // Position below the zones with some margin
+        this.position = { x: minX, y: maxY + 20 };
+        this.size = { width: maxX - minX, height: 80 };
+        
+        console.log(`♻️ Recycle Bin positioned at (${this.position.x}, ${this.position.y}) with size ${this.size.width}x${this.size.height}`);
+    }
+
+    render(ctx) {
+        if (!this.isActive || this.size.width === 0) return;
+
+        ctx.save();
+        
+        // Calculate dynamic opacity for pulse effect if highlighted
+        let currentOpacity = this.opacity;
+        if (this.isHighlighted) {
+            currentOpacity += 0.2 * Math.sin(this.animationFrame);
+        }
+        
+        // Draw bin background with semi-transparency
+        ctx.fillStyle = this.color + Math.floor(currentOpacity * 255).toString(16).padStart(2, '0');
+        ctx.fillRect(this.position.x, this.position.y, this.size.width, this.size.height);
+        
+        // Draw dashed border for recycle bin
+        ctx.strokeStyle = this.isHighlighted ? this.highlightColor : this.borderColor;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([10, 5]);
+        ctx.strokeRect(this.position.x, this.position.y, this.size.width, this.size.height);
+        ctx.setLineDash([]);
+        
+        // Draw recycle icon and label in center
+        ctx.fillStyle = this.borderColor;
+        ctx.font = 'bold 20px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(
+            this.properties.label, 
+            this.position.x + this.size.width / 2, 
+            this.position.y + this.size.height / 2 + 6
+        );
+        
+        // Draw capacity indicator in corner
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText(
+            `${this.occupants.length}/${this.capacity}`, 
+            this.position.x + this.size.width - 10, 
+            this.position.y + 20
+        );
+        
+        // Draw warning stripes if nearly full
+        if (this.occupants.length / this.capacity > 0.8) {
+            this.drawWarningStripes(ctx);
+        }
+        
+        ctx.restore();
+    }
+
+    /**
+     * Draw warning stripes when bin is nearly full
+     */
+    drawWarningStripes(ctx) {
+        ctx.save();
+        ctx.strokeStyle = '#ffff00';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        
+        // Draw diagonal warning lines
+        for (let i = 0; i < 3; i++) {
+            const offset = i * 20;
+            ctx.beginPath();
+            ctx.moveTo(this.position.x + offset, this.position.y);
+            ctx.lineTo(this.position.x + offset + 20, this.position.y + 20);
+            ctx.stroke();
+        }
+        
+        ctx.restore();
+    }
+
+    /**
+     * Override canAccept to accept all hardware types for recycling
+     */
+    canAccept(item) {
+        return this.occupants.length < this.capacity;
+    }
+
+    /**
+     * Override onItemAdded for recycling-specific behavior
+     */
+    onItemAdded(item) {
+        super.onItemAdded(item);
+        
+        // Mark item as recycled
+        item.location = 'recycle-area';
+        item.status = 'recycled';
+        item.recycleTime = Date.now();
+        
+        console.log(`♻️ ${item.hardwareType} added to recycle bin - Status: recycled`);
+        
+        // Trigger recycling process animation or effects here if needed
+        this.triggerRecyclingEffect(item);
+    }
+
+    /**
+     * Trigger visual effects for recycling process
+     */
+    triggerRecyclingEffect(item) {
+        // Add sparkle effect or animation to show item being recycled
+        // This could integrate with a particle system if available
+        console.log(`✨ Recycling effect triggered for ${item.hardwareType}`);
+    }
+}
+
 // Make classes available globally for browser environment
 window.InteractionZone = InteractionZone;
 window.StorageBin = StorageBin;
 window.LoadingDock = LoadingDock;
 window.ServerRackSlot = ServerRackSlot;
 window.QualityControlStation = QualityControlStation;
+window.RecycleBinZone = RecycleBinZone;
 window.ZoneManager = ZoneManager;

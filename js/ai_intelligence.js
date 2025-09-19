@@ -26,15 +26,56 @@ class AIAgent {
         this.dockCapacityThreshold = 0.9; // 90% capacity threshold
         this.truckQueue = [];
         
+        // Movement hierarchy rules
+        this.movementRules = {
+            'loading-dock': ['qc-station'], // Parts from docks can only go to QC Station
+            'qc-station': ['storage-bin', 'recycle-bin'], // QC can send to storage or recycle
+            'storage-bin': ['server-rack', 'storage-bin'], // Storage bins can go to other bins or RRs
+            'server-rack': ['recycle-bin'], // RRs only go to recycle bin on failure
+            'recycle-bin': [] // Recycle bin is final destination
+        };
+        
+        // QC Station decision parameters
+        this.qcPassRate = 0.85; // 85% of parts pass QC
+        this.qcProcessingTime = 30; // 30 seconds per item
+        
         // Performance tracking
         this.metrics = {
             trucksProcessed: 0,
             averageWaitTime: 0,
             capacityUtilization: 0,
-            placementEfficiency: 0
+            placementEfficiency: 0,
+            qcProcessed: 0,
+            qcPassedRate: 0,
+            failuresDetected: 0,
+            recycledParts: 0
         };
         
-        console.log('🤖 AI Agent initialized - Ready for intelligent decision-making');
+        console.log('🤖 AI Agent initialized - Ready for intelligent decision-making with movement hierarchy');
+    }
+
+    /**
+     * Validate if a movement is allowed according to hierarchy rules
+     */
+    isMovementAllowed(fromZoneType, toZoneType) {
+        const allowedDestinations = this.movementRules[fromZoneType];
+        return allowedDestinations && allowedDestinations.includes(toZoneType);
+    }
+
+    /**
+     * Get next valid destinations for a part in a specific zone
+     */
+    getValidDestinations(currentZoneType) {
+        return this.movementRules[currentZoneType] || [];
+    }
+
+    /**
+     * Validate if parts can move between zones of the same type
+     */
+    canMoveBetweenSameType(zoneType, hardwareType) {
+        // Allow movement between same types for loading docks and storage bins
+        const allowedSameTypeMovement = ['loading-dock', 'storage-bin'];
+        return allowedSameTypeMovement.includes(zoneType);
     }
 
     /**
@@ -75,7 +116,8 @@ class AIAgent {
      * Analyze all loading docks - capacity, availability, efficiency
      */
     analyzeDocks(zoneManager) {
-        const loadingDocks = zoneManager.zones.filter(zone => zone.type === 'loading-dock');
+        const allZones = zoneManager.getAllZones();
+        const loadingDocks = allZones.filter(zone => zone.type === 'loading-dock');
         
         return loadingDocks.map(dock => ({
             dockId: dock.dockNumber,
@@ -213,6 +255,9 @@ class AIAgent {
             });
         }
         
+        // Movement hierarchy optimization options
+        options.push(...this.generateMovementOptions(analysis));
+        
         // Capacity optimization options
         const overCapacityDocks = analysis.loadingDocks.filter(dock => 
             dock.capacity > this.dockCapacityThreshold
@@ -226,12 +271,85 @@ class AIAgent {
             });
         }
         
+        // QC Station processing options
+        options.push(...this.generateQCOptions(analysis));
+        
+        // RR failure response options
+        options.push(...this.generateFailureResponseOptions(analysis));
+        
         // Emergency scenarios
         if (analysis.loadingDocks.every(dock => dock.capacity > this.dockCapacityThreshold)) {
             options.push({
                 type: 'emergency_capacity_management',
                 priority: 1.0,
                 action: 'queue_trucks_until_capacity_available'
+            });
+        }
+        
+        return options;
+    }
+
+    /**
+     * Generate movement-specific options based on hierarchy rules
+     */
+    generateMovementOptions(analysis) {
+        const options = [];
+        
+        // Check for items that need to move through hierarchy
+        if (analysis.inventoryStatus.loadingBayItems > 0) {
+            options.push({
+                type: 'process_loading_bay_items',
+                priority: 0.7,
+                action: 'move_items_to_qc',
+                itemCount: analysis.inventoryStatus.loadingBayItems
+            });
+        }
+        
+        // Storage optimization - move items to server racks
+        if (analysis.inventoryStatus.storageItems > 5) {
+            options.push({
+                type: 'optimize_storage',
+                priority: 0.6,
+                action: 'install_items_in_server_racks',
+                itemCount: Math.min(analysis.inventoryStatus.storageItems, 3)
+            });
+        }
+        
+        return options;
+    }
+
+    /**
+     * Generate QC Station specific options
+     */
+    generateQCOptions(analysis) {
+        const options = [];
+        
+        // If QC station is available and there are items to process
+        if (analysis.inventoryStatus.loadingBayItems > 0) {
+            options.push({
+                type: 'schedule_qc_processing',
+                priority: 0.8,
+                estimatedTime: this.qcProcessingTime,
+                expectedPassRate: this.qcPassRate
+            });
+        }
+        
+        return options;
+    }
+
+    /**
+     * Generate failure response options
+     */
+    generateFailureResponseOptions(analysis) {
+        const options = [];
+        
+        // Check server floor items for potential failures
+        if (analysis.inventoryStatus.serverFloorItems > 0) {
+            options.push({
+                type: 'monitor_server_failures',
+                priority: 0.5,
+                action: 'continuous_monitoring',
+                itemCount: analysis.inventoryStatus.serverFloorItems
             });
         }
         
@@ -338,11 +456,23 @@ class AIAgent {
             case 'emergency_capacity_management':
                 return `All docks at capacity - implementing queue management to prevent system overload.`;
                 
+            case 'process_loading_bay_items':
+                return `Processing ${decision.itemCount} items from loading bay through QC Station - implementing movement hierarchy.`;
+                
+            case 'optimize_storage':
+                return `Installing ${decision.itemCount} items from storage into server racks for optimal utilization.`;
+                
+            case 'schedule_qc_processing':
+                return `Scheduling QC processing with ${Math.round(decision.expectedPassRate * 100)}% expected pass rate - ${decision.estimatedTime}s per item.`;
+                
+            case 'monitor_server_failures':
+                return `Monitoring ${decision.itemCount} server rack items for potential failures - proactive maintenance mode.`;
+                
             case 'no_action':
                 return decision.reason || 'No action required at this time.';
                 
             default:
-                return 'Decision made based on current analysis parameters.';
+                return 'Decision made based on movement hierarchy and current analysis parameters.';
         }
     }
 
@@ -385,17 +515,437 @@ class AIAgent {
     calculateNewAverage(currentAvg, newValue, count) {
         return ((currentAvg * (count - 1)) + newValue) / count;
     }
+
+    /**
+     * QC Station Decision Logic
+     * Determines whether a part passes QC and should go to storage or be recycled
+     */
+    makeQCDecision(hardwareItem) {
+        // Simulate quality control process
+        const qcResult = {
+            itemId: hardwareItem.id,
+            hardwareType: hardwareItem.hardwareType,
+            timestamp: Date.now(),
+            passed: Math.random() < this.qcPassRate,
+            processingTime: this.qcProcessingTime,
+            issues: []
+        };
+
+        // Add potential issues for failed items
+        if (!qcResult.passed) {
+            const possibleIssues = [
+                'Physical damage detected',
+                'Component failure',
+                'Specification mismatch',
+                'Manufacturing defect',
+                'Compatibility issue'
+            ];
+            qcResult.issues.push(possibleIssues[Math.floor(Math.random() * possibleIssues.length)]);
+        }
+
+        // Update metrics
+        this.metrics.qcProcessed++;
+        this.metrics.qcPassedRate = this.calculateNewAverage(
+            this.metrics.qcPassedRate,
+            qcResult.passed ? 1 : 0,
+            this.metrics.qcProcessed
+        );
+
+        if (!qcResult.passed) {
+            this.metrics.failuresDetected++;
+        }
+
+        // Log QC decision
+        console.log(`🔍 QC Decision for ${hardwareItem.hardwareType}: ${qcResult.passed ? 'PASS' : 'FAIL'}`, qcResult);
+
+        return qcResult;
+    }
+
+    /**
+     * RR Failure Detection
+     * Simulates server rack failure and triggers movement to recycle bin
+     */
+    checkRRFailure(serverRackItem, gameState) {
+        // Base failure rate: 0.1% per hour of operation
+        const hoursSinceInstall = (Date.now() - (serverRackItem.installTime || Date.now())) / (1000 * 60 * 60);
+        const failureRate = 0.001 * hoursSinceInstall;
+        
+        // Higher failure rate for certain hardware types
+        const riskFactors = {
+            'PSU': 1.5,
+            'HDD': 2.0,
+            'SSD': 0.5,
+            'RAM': 0.8,
+            'CPU': 0.7,
+            'GPU': 1.2
+        };
+        
+        const adjustedFailureRate = failureRate * (riskFactors[serverRackItem.hardwareType] || 1.0);
+        
+        const hasFailed = Math.random() < adjustedFailureRate;
+        
+        if (hasFailed) {
+            const failureReport = {
+                itemId: serverRackItem.id,
+                hardwareType: serverRackItem.hardwareType,
+                timestamp: Date.now(),
+                failureReason: this.generateFailureReason(serverRackItem.hardwareType),
+                severity: this.calculateFailureSeverity(),
+                recommendedAction: 'immediate_recycling'
+            };
+            
+            // Update metrics
+            this.metrics.failuresDetected++;
+            
+            // Log failure
+            console.log(`⚠️ RR Failure detected for ${serverRackItem.hardwareType}:`, failureReport);
+            
+            return failureReport;
+        }
+        
+        return null;
+    }
+
+    /**
+     * Generate realistic failure reason based on hardware type
+     */
+    generateFailureReason(hardwareType) {
+        const failureReasons = {
+            'PSU': ['Power output instability', 'Capacitor failure', 'Overheating'],
+            'HDD': ['Bad sectors detected', 'Mechanical failure', 'Read/write errors'],
+            'SSD': ['Flash memory degradation', 'Controller failure', 'Wear leveling issues'],
+            'RAM': ['Memory corruption', 'Timing errors', 'Physical damage'],
+            'CPU': ['Thermal shutdown', 'Cache errors', 'Instruction pipeline failure'],
+            'GPU': ['VRAM failure', 'Shader unit malfunction', 'Thermal throttling'],
+            'Motherboard': ['Trace damage', 'Component failure', 'BIOS corruption']
+        };
+        
+        const reasons = failureReasons[hardwareType] || ['General hardware failure'];
+        return reasons[Math.floor(Math.random() * reasons.length)];
+    }
+
+    /**
+     * Calculate failure severity (low, medium, high, critical)
+     */
+    calculateFailureSeverity() {
+        const rand = Math.random();
+        if (rand < 0.4) return 'low';
+        if (rand < 0.7) return 'medium';
+        if (rand < 0.9) return 'high';
+        return 'critical';
+    }
+
+    /**
+     * Plan optimal movement path for hardware item
+     */
+    planMovementPath(item, targetZoneType, gameState) {
+        const currentZone = this.findItemCurrentZone(item, gameState);
+        if (!currentZone) {
+            console.warn(`Cannot find current zone for item ${item.id}`);
+            return null;
+        }
+
+        const currentZoneType = this.getZoneTypeFromZone(currentZone);
+        
+        // Check if direct movement is allowed
+        if (this.isMovementAllowed(currentZoneType, targetZoneType)) {
+            return {
+                path: [currentZoneType, targetZoneType],
+                direct: true,
+                estimatedTime: this.estimateMovementTime(currentZoneType, targetZoneType)
+            };
+        }
+
+        // Check if movement between same types is allowed (e.g., dock to dock)
+        if (currentZoneType === targetZoneType && this.canMoveBetweenSameType(currentZoneType, item.hardwareType)) {
+            return {
+                path: [currentZoneType, targetZoneType],
+                direct: true,
+                sameType: true,
+                estimatedTime: this.estimateMovementTime(currentZoneType, targetZoneType)
+            };
+        }
+
+        // Find indirect path through hierarchy
+        return this.findIndirectPath(currentZoneType, targetZoneType, item);
+    }
+
+    /**
+     * Find item's current zone in the game state
+     */
+    findItemCurrentZone(item, gameState) {
+        const allZones = gameState.zoneManager.getAllZones();
+        return allZones.find(zone => 
+            zone.occupants && zone.occupants.includes(item)
+        );
+    }
+
+    /**
+     * Get zone type from zone object
+     */
+    getZoneTypeFromZone(zone) {
+        const zoneTypeMap = {
+            'loading-dock': 'loading-dock',
+            'storage-bin': 'storage-bin',
+            'server-rack': 'server-rack',
+            'quality-control': 'qc-station',
+            'recycle-bin': 'recycle-bin'
+        };
+        return zoneTypeMap[zone.type] || zone.type;
+    }
+
+    /**
+     * Find indirect path through movement hierarchy
+     */
+    findIndirectPath(fromZone, toZone, item) {
+        // Simple BFS to find path through hierarchy
+        const queue = [{ zone: fromZone, path: [fromZone], time: 0 }];
+        const visited = new Set([fromZone]);
+
+        while (queue.length > 0) {
+            const current = queue.shift();
+            const validDestinations = this.getValidDestinations(current.zone);
+
+            for (const nextZone of validDestinations) {
+                if (nextZone === toZone) {
+                    return {
+                        path: [...current.path, nextZone],
+                        direct: false,
+                        estimatedTime: current.time + this.estimateMovementTime(current.zone, nextZone)
+                    };
+                }
+
+                if (!visited.has(nextZone)) {
+                    visited.add(nextZone);
+                    queue.push({
+                        zone: nextZone,
+                        path: [...current.path, nextZone],
+                        time: current.time + this.estimateMovementTime(current.zone, nextZone)
+                    });
+                }
+            }
+        }
+
+        return null; // No valid path found
+    }
+
+    /**
+     * Estimate movement time between zones
+     */
+    estimateMovementTime(fromZone, toZone) {
+        const baseTimes = {
+            'loading-dock': { 'qc-station': 45 },
+            'qc-station': { 'storage-bin': 30, 'recycle-bin': 20 },
+            'storage-bin': { 'server-rack': 60, 'storage-bin': 25 },
+            'server-rack': { 'recycle-bin': 40 }
+        };
+
+        return baseTimes[fromZone]?.[toZone] || 60; // Default 60 seconds
+    }
 }
 
 /**
- * Dock Management System
- * Handles intelligent dock assignment and capacity management
+ * Movement Management System
+ * Handles intelligent movement of parts through the hierarchy system
  */
-class DockManagementSystem {
+class MovementManagementSystem {
     constructor(aiAgent) {
         this.aiAgent = aiAgent;
         this.gridSize = { width: 30, height: 20 }; // Item dimensions
         this.margin = 5; // Grid spacing
+        this.pendingMovements = new Map(); // Track items in transit
+        this.qcQueue = []; // Queue for QC processing
+        this.recyclingQueue = []; // Queue for recycling
+    }
+
+    /**
+     * Execute movement of hardware item based on hierarchy rules
+     */
+    executeMovement(item, targetZoneType, gameState) {
+        const movementPlan = this.aiAgent.planMovementPath(item, targetZoneType, gameState);
+        
+        if (!movementPlan) {
+            console.warn(`❌ Cannot move ${item.hardwareType} to ${targetZoneType} - no valid path`);
+            return false;
+        }
+
+        // Validate movement is allowed
+        if (!movementPlan.direct && !movementPlan.sameType) {
+            console.warn(`❌ Complex movement path required for ${item.hardwareType}:`, movementPlan.path);
+            // For now, only allow direct movements
+            return false;
+        }
+
+        // Execute the movement
+        return this.performMovement(item, targetZoneType, gameState, movementPlan);
+    }
+
+    /**
+     * Perform the actual movement operation
+     */
+    performMovement(item, targetZoneType, gameState, movementPlan) {
+        try {
+            // Find available target zone
+            const targetZone = this.findAvailableZone(targetZoneType, gameState, item);
+            
+            if (!targetZone) {
+                console.warn(`❌ No available ${targetZoneType} for ${item.hardwareType}`);
+                return false;
+            }
+
+            // Remove from current zone
+            const currentZone = this.aiAgent.findItemCurrentZone(item, gameState);
+            if (currentZone) {
+                this.removeFromZone(item, currentZone);
+            }
+
+            // Add to target zone
+            this.addToZone(item, targetZone);
+
+            // Update item properties
+            item.location = this.getLocationFromZoneType(targetZoneType);
+            
+            // Log movement
+            console.log(`✅ Moved ${item.hardwareType} from ${currentZone?.type || 'unknown'} to ${targetZone.type}`);
+            
+            return true;
+
+        } catch (error) {
+            console.error(`❌ Movement failed for ${item.hardwareType}:`, error);
+            return false;
+        }
+    }
+
+    /**
+     * Process items through QC Station
+     */
+    processQCQueue(gameState) {
+        if (this.qcQueue.length === 0) return;
+
+        const allZones = gameState.zoneManager.getAllZones();
+        const qcStation = allZones.find(zone => zone.type === 'quality-control');
+        if (!qcStation || qcStation.occupants.length >= qcStation.capacity) return;
+
+        // Process one item at a time
+        const item = this.qcQueue.shift();
+        const qcResult = this.aiAgent.makeQCDecision(item);
+
+        // Determine destination based on QC result
+        const destination = qcResult.passed ? 'storage-bin' : 'recycle-bin';
+        
+        // Schedule movement after processing time
+        setTimeout(() => {
+            this.executeMovement(item, destination, gameState);
+        }, qcResult.processingTime * 1000);
+
+        console.log(`🔍 Processing ${item.hardwareType} through QC - ${qcResult.passed ? 'PASS' : 'FAIL'}`);
+    }
+
+    /**
+     * Handle RR failure and automatic recycling
+     */
+    checkAndHandleRRFailures(gameState) {
+        const allZones = gameState.zoneManager.getAllZones();
+        const serverRacks = allZones.filter(zone => zone.type === 'server-rack');
+        
+        serverRacks.forEach(rack => {
+            rack.occupants.forEach(item => {
+                const failureReport = this.aiAgent.checkRRFailure(item, gameState);
+                
+                if (failureReport) {
+                    console.log(`⚠️ RR Failure detected - moving ${item.hardwareType} to recycle bin`);
+                    
+                    // Add to recycling queue for immediate processing
+                    this.recyclingQueue.push({
+                        item: item,
+                        failureReport: failureReport,
+                        timestamp: Date.now()
+                    });
+                }
+            });
+        });
+    }
+
+    /**
+     * Process recycling queue
+     */
+    processRecyclingQueue(gameState) {
+        while (this.recyclingQueue.length > 0) {
+            const recyclingItem = this.recyclingQueue.shift();
+            
+            if (this.executeMovement(recyclingItem.item, 'recycle-bin', gameState)) {
+                this.aiAgent.metrics.recycledParts++;
+                console.log(`♻️ Successfully recycled failed ${recyclingItem.item.hardwareType}`);
+            }
+        }
+    }
+
+    /**
+     * Find available zone of specified type
+     */
+    findAvailableZone(zoneType, gameState, item) {
+        const allZones = gameState.zoneManager.getAllZones();
+        const zones = allZones.filter(zone => {
+            const mappedType = this.aiAgent.getZoneTypeFromZone(zone);
+            return mappedType === zoneType;
+        });
+
+        // Find zone with available capacity
+        return zones.find(zone => {
+            if (!zone.occupants) zone.occupants = [];
+            return zone.occupants.length < (zone.capacity || 1);
+        });
+    }
+
+    /**
+     * Remove item from zone
+     */
+    removeFromZone(item, zone) {
+        if (!zone.occupants) zone.occupants = [];
+        const index = zone.occupants.findIndex(occupant => occupant.id === item.id);
+        if (index !== -1) {
+            zone.occupants.splice(index, 1);
+        }
+    }
+
+    /**
+     * Add item to zone
+     */
+    addToZone(item, zone) {
+        if (!zone.occupants) zone.occupants = [];
+        zone.occupants.push(item);
+        
+        // Position item within zone
+        const position = this.calculateZonePosition(zone, zone.occupants.length - 1);
+        item.position = position;
+    }
+
+    /**
+     * Calculate position within zone for item
+     */
+    calculateZonePosition(zone, itemIndex) {
+        const itemsPerRow = Math.floor(zone.size.width / (this.gridSize.width + this.margin));
+        const row = Math.floor(itemIndex / itemsPerRow);
+        const col = itemIndex % itemsPerRow;
+        
+        return {
+            x: zone.position.x + this.margin + col * (this.gridSize.width + this.margin),
+            y: zone.position.y + this.margin + row * (this.gridSize.height + this.margin)
+        };
+    }
+
+    /**
+     * Get location string from zone type
+     */
+    getLocationFromZoneType(zoneType) {
+        const locationMap = {
+            'loading-dock': 'loading-bay',
+            'qc-station': 'quality-control',
+            'storage-bin': 'storage-room',
+            'server-rack': 'server-floor',
+            'recycle-bin': 'recycle-area'
+        };
+        return locationMap[zoneType] || 'unknown';
     }
 
     /**
@@ -406,7 +956,8 @@ class DockManagementSystem {
         const decision = this.aiAgent.makeDecision(gameState);
         
         if (decision.type === 'assign_truck_to_dock') {
-            const dock = gameState.zoneManager.zones.find(zone => 
+            const allZones = gameState.zoneManager.getAllZones();
+            const dock = allZones.find(zone => 
                 zone.type === 'loading-dock' && zone.dockNumber === decision.dockId
             );
             return { dock, decision };
@@ -491,8 +1042,105 @@ class DockManagementSystem {
     }
 }
 
+/**
+ * Recycle Bin Entity
+ * Large rectangular bin spanning storage room and server floor
+ */
+class RecycleBin {
+    constructor(gameState) {
+        // Calculate position to span storage room and server floor
+        const allZones = gameState.zoneManager.getAllZones();
+        const storageZones = allZones.filter(z => z.type === 'storage-bin');
+        const serverZones = allZones.filter(z => z.type === 'server-rack');
+        
+        if (storageZones.length === 0 || serverZones.length === 0) {
+            console.warn('Cannot create recycle bin - missing storage or server zones');
+            return null;
+        }
+
+        // Calculate bounding box for all storage and server zones
+        const combinedZones = [...storageZones, ...serverZones];
+        const minX = Math.min(...combinedZones.map(z => z.position.x));
+        const maxX = Math.max(...combinedZones.map(z => z.position.x + z.size.width));
+        const minY = Math.max(...combinedZones.map(z => z.position.y + z.size.height)) + 20;
+        
+        this.id = 'recycle-bin-main';
+        this.position = { x: minX, y: minY };
+        this.size = { width: maxX - minX, height: 80 };
+        this.type = 'recycle-bin';
+        this.capacity = 100; // Large capacity
+        this.occupants = [];
+        
+        // Visual properties
+        this.color = '#ff6b6b';
+        this.borderColor = '#cc0000';
+        this.icon = '♻️';
+        
+        console.log('♻️ Recycle Bin created spanning storage and server areas');
+    }
+
+    update(deltaTime) {
+        // Animate recycling process
+        this.animationFrame = (this.animationFrame || 0) + deltaTime;
+    }
+
+    render(ctx) {
+        ctx.save();
+        
+        // Draw bin background
+        ctx.fillStyle = this.color + '40'; // Semi-transparent
+        ctx.fillRect(this.position.x, this.position.y, this.size.width, this.size.height);
+        
+        // Draw bin border
+        ctx.strokeStyle = this.borderColor;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([10, 5]);
+        ctx.strokeRect(this.position.x, this.position.y, this.size.width, this.size.height);
+        ctx.setLineDash([]);
+        
+        // Draw recycle icon and label
+        ctx.fillStyle = this.borderColor;
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(
+            '♻️ RECYCLE BIN', 
+            this.position.x + this.size.width / 2, 
+            this.position.y + this.size.height / 2 + 8
+        );
+        
+        // Draw capacity indicator
+        ctx.font = '12px Arial';
+        ctx.fillText(
+            `${this.occupants.length}/${this.capacity}`, 
+            this.position.x + this.size.width - 40, 
+            this.position.y + 20
+        );
+        
+        ctx.restore();
+    }
+
+    addItem(item) {
+        if (this.occupants.length < this.capacity) {
+            this.occupants.push(item);
+            item.location = 'recycle-area';
+            item.status = 'recycled';
+            console.log(`♻️ Added ${item.hardwareType} to recycle bin`);
+            return true;
+        }
+        return false;
+    }
+
+    contains(item) {
+        return this.occupants.includes(item);
+    }
+}
+
 // Make classes available globally for browser environment
 window.AIAgent = AIAgent;
-window.DockManagementSystem = DockManagementSystem;
+window.MovementManagementSystem = MovementManagementSystem;
+window.RecycleBin = RecycleBin;
 
-console.log('✅ AI Intelligence Module loaded successfully');
+// Backward compatibility
+window.DockManagementSystem = MovementManagementSystem;
+
+console.log('✅ AI Intelligence Module loaded successfully with movement hierarchy system');

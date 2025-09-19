@@ -29,6 +29,10 @@ class DataCenterSimulation {
         this.aiRobot = new AIRobotAgent(600, 120); // Start in center-top area
         this.pathfindingSystem = new PathfindingSystem(1200, 800);
         this.eventGenerator = new EventGenerator();
+        
+        // Initialize AI intelligence system with movement hierarchy
+        this.aiAgent = new AIAgent();
+        this.movementSystem = new MovementManagementSystem(this.aiAgent);
         this.debugMode = false;
         this.selectedItem = null;
         
@@ -245,7 +249,46 @@ class DataCenterSimulation {
         
         this.zoneManager.addZone(qualityControl);
 
-        console.log('✅ Created demo interaction zones with corrected layouts');
+        // Create and position recycle bin
+        const recycleBin = new RecycleBinZone();
+        recycleBin.autoPosition(this.zoneManager);
+        this.zoneManager.addZone(recycleBin);
+
+        console.log('✅ Created demo interaction zones with corrected layouts and recycle bin');
+        
+        // Initialize movement demonstration after zones are created
+        this.setupMovementDemonstration();
+    }
+
+    /**
+     * Setup demonstration of the movement hierarchy system
+     */
+    setupMovementDemonstration() {
+        if (!this.movementSystem) return;
+
+        // Simulate some items going through QC process
+        setTimeout(() => {
+            // Find items in loading docks and queue them for QC
+            const loadingDockItems = this.hardwareItems.filter(item => item.location === 'loading-bay');
+            
+            if (loadingDockItems.length > 0) {
+                // Add first few items to QC queue
+                const itemsToQC = loadingDockItems.slice(0, 3);
+                itemsToQC.forEach(item => {
+                    this.movementSystem.qcQueue.push(item);
+                    console.log(`📝 Added ${item.hardwareType} to QC queue for processing`);
+                });
+                
+                this.addNotification(`${itemsToQC.length} items queued for Quality Control inspection`, 'info');
+            }
+        }, 5000); // Start demo after 5 seconds
+
+        // Simulate some RR failures periodically
+        setInterval(() => {
+            if (this.movementSystem) {
+                this.movementSystem.checkAndHandleRRFailures(this);
+            }
+        }, 30000); // Check every 30 seconds
     }
 
     update(deltaTime) {
@@ -282,6 +325,24 @@ class DataCenterSimulation {
         // Log if entity updates are taking too long (>10ms)
         if (entityUpdateTime > 10) {
             console.warn(`⚠️ Entity updates slow: ${entityUpdateTime.toFixed(2)}ms for ${entityUpdateCount} entities`);
+        }
+        
+        // Process AI movement system
+        if (this.movementSystem) {
+            // Process QC queue every 2 seconds
+            if (this.frameCount % 120 === 0) {
+                this.movementSystem.processQCQueue(this);
+            }
+            
+            // Check for RR failures every 10 seconds
+            if (this.frameCount % 600 === 0) {
+                this.movementSystem.checkAndHandleRRFailures(this);
+            }
+            
+            // Process recycling queue every second
+            if (this.frameCount % 60 === 0) {
+                this.movementSystem.processRecyclingQueue(this);
+            }
         }
         
         this.updateCamera(adjustedDelta);
@@ -680,6 +741,41 @@ class DataCenterSimulation {
         this.addNotification('View reset to default', 'info');
     }
 
+    /**
+     * Show movement options for selected hardware item
+     */
+    showMovementOptions(item) {
+        if (!this.aiAgent || !this.movementSystem) return;
+
+        const currentZone = this.aiAgent.findItemCurrentZone(item, this);
+        if (!currentZone) {
+            console.log(`Item ${item.hardwareType} not in any zone`);
+            return;
+        }
+
+        const currentZoneType = this.aiAgent.getZoneTypeFromZone(currentZone);
+        const validDestinations = this.aiAgent.getValidDestinations(currentZoneType);
+
+        console.log(`🔄 Movement Options for ${item.hardwareType}:`);
+        console.log(`  Current: ${currentZoneType}`);
+        console.log(`  Valid destinations:`, validDestinations);
+
+        // Demo: Auto-move item through QC process if it's in loading dock
+        if (currentZoneType === 'loading-dock') {
+            console.log(`🏭 Demonstrating: Moving ${item.hardwareType} to QC Station`);
+            this.movementSystem.qcQueue.push(item);
+            this.addNotification(`${item.hardwareType} added to QC processing queue`, 'info');
+        } else if (currentZoneType === 'storage-bin') {
+            // Demo: Move to server rack
+            console.log(`🖥️ Demonstrating: Installing ${item.hardwareType} in server rack`);
+            setTimeout(() => {
+                if (this.movementSystem.executeMovement(item, 'server-rack', this)) {
+                    this.addNotification(`${item.hardwareType} installed in server rack`, 'success');
+                }
+            }, 2000);
+        }
+    }
+
     // switchLocation method commented out - can be revisited later
     /*
     switchLocation(location) {
@@ -722,6 +818,9 @@ class DataCenterSimulation {
             if (clickedItem) {
                 this.selectHardwareItem(clickedItem);
                 this.addNotification(`Selected ${clickedItem.hardwareType} (${clickedItem.serialNumber})`, 'info');
+                
+                // Demonstrate movement options based on current location
+                this.showMovementOptions(clickedItem);
             } else {
                 // Check if AI robot was clicked
                 if (this.aiRobot && 
@@ -899,44 +998,57 @@ class DataCenterSimulation {
 
     updateAIStatus() {
         const aiTaskElement = document.getElementById('ai-current-task');
-        if (aiTaskElement && this.aiRobot) {
+        
+        // Update with new AI Agent system if available
+        if (this.aiAgent && aiTaskElement) {
+            const status = this.aiAgent.getStatus();
+            const metrics = this.aiAgent.metrics;
+            
+            if (status.currentTask) {
+                aiTaskElement.textContent = `${status.state}: ${status.currentTask}`;
+            } else {
+                aiTaskElement.textContent = `AI Agent ${status.state} - Movement System Active`;
+            }
+            
+            // Update the thought bubble with movement system status
+            const thoughtBubble = document.getElementById('ai-thought-bubble');
+            const bubbleContent = document.querySelector('.bubble-content');
+            
+            if (thoughtBubble && bubbleContent) {
+                let content = `<strong>🤖 AI Movement Intelligence</strong><br>`;
+                content += `State: ${status.state}<br>`;
+                content += `Queue Length: ${status.queueLength}<br><br>`;
+                
+                content += `<strong>📊 Performance Metrics:</strong><br>`;
+                content += `Trucks Processed: ${metrics.trucksProcessed}<br>`;
+                content += `QC Processed: ${metrics.qcProcessed}<br>`;
+                content += `QC Pass Rate: ${Math.round(metrics.qcPassedRate * 100)}%<br>`;
+                content += `Failures Detected: ${metrics.failuresDetected}<br>`;
+                content += `Parts Recycled: ${metrics.recycledParts}<br><br>`;
+                
+                if (status.lastDecision) {
+                    content += `<strong>🧠 Last Decision:</strong><br>`;
+                    content += `${status.lastDecision.reasoning || 'Processing...'}<br>`;
+                }
+                
+                // Show movement system queues
+                if (this.movementSystem) {
+                    content += `<br><strong>🔄 System Queues:</strong><br>`;
+                    content += `QC Queue: ${this.movementSystem.qcQueue.length}<br>`;
+                    content += `Recycle Queue: ${this.movementSystem.recyclingQueue.length}<br>`;
+                }
+                
+                bubbleContent.innerHTML = content;
+                thoughtBubble.classList.remove('hidden');
+            }
+        } else if (aiTaskElement && this.aiRobot) {
+            // Fallback to original robot system
             const robotDecision = this.aiRobot.getCurrentDecision();
             
             if (robotDecision.currentTask) {
                 aiTaskElement.textContent = robotDecision.currentTask.description;
             } else {
                 aiTaskElement.textContent = 'AI Agent idle - waiting for next task...';
-            }
-            
-            // Update the thought bubble with advanced AI analysis
-            const thoughtBubble = document.getElementById('ai-thought-bubble');
-            const bubbleContent = document.querySelector('.bubble-content');
-            
-            if (thoughtBubble && bubbleContent && robotDecision.currentTask) {
-                // Get advanced decision explanations
-                const explanations = this.aiRobot.getDecisionExplanation();
-                const metrics = this.aiRobot.getPerformanceMetrics();
-                
-                let content = `<strong>AI Advanced Analysis</strong><br>`;
-                content += `Task: ${robotDecision.currentTask.type}<br>`;
-                content += `State: ${robotDecision.analysisState}<br>`;
-                
-                if (explanations && explanations.length > 0) {
-                    content += `<br><strong>Active Analysis:</strong><br>`;
-                    explanations.slice(0, 2).forEach(exp => {
-                        content += `• ${exp.area}: ${exp.decision}<br>`;
-                    });
-                }
-                
-                // Show learning behavior
-                if (this.aiRobot.learningBehavior) {
-                    content += `<br><strong>Learning Status:</strong><br>`;
-                    content += `Confidence: ${Math.round(this.aiRobot.learningBehavior.confidenceLevel * 100)}%<br>`;
-                    content += `Experience: ${this.aiRobot.learningBehavior.experiencePoints} pts<br>`;
-                }
-                
-                bubbleContent.innerHTML = content;
-                thoughtBubble.classList.remove('hidden');
             }
         }
     }
