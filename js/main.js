@@ -465,16 +465,32 @@ class DataCenterSimulation {
     }
 
     renderOverviewLayout(ctx, width, height) {
-        ctx.fillStyle = '#00ff88';
-        ctx.font = 'bold 36px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('Data Center Management Overview', width / 2, 60);
-
         // Better utilize the 1200x800 space - make zones larger and more spaced out
         const zoneWidth = 360;  // Fixed width for better visibility
         const zoneHeight = height - 180;  // Use more vertical space
         const startY = 90;
         const spacing = 20;  // Space between zones
+
+        ctx.fillStyle = '#00ff88';
+        ctx.font = 'bold 28px Arial';
+        ctx.textAlign = 'center';
+        
+        // Calculate the center position over the three location zones
+        const totalZonesWidth = (zoneWidth * 3) + (spacing * 2);
+        const zonesStartX = 30;
+        const zonesCenterX = zonesStartX + (totalZonesWidth / 2);
+        
+        // Ensure text fits within the zones area
+        const titleText = 'Data Center Management Overview';
+        const textWidth = ctx.measureText(titleText).width;
+        const availableWidth = totalZonesWidth;
+        
+        // If text is too wide, use a smaller font or shorter text
+        if (textWidth > availableWidth) {
+            ctx.font = 'bold 24px Arial';
+        }
+        
+        ctx.fillText(titleText, zonesCenterX, 60);
 
         this.drawLocationZone(ctx, 30, startY, zoneWidth, zoneHeight, 'Loading Bay', '#ff6b6b', []);
 
