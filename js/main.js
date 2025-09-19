@@ -224,7 +224,7 @@ class DataCenterSimulation {
         const serverRack5 = new ServerRackSlot(820, 440, 120, 110, 'R3', 1);
         const serverRack6 = new ServerRackSlot(960, 440, 120, 110, 'R3', 2);
         
-        const qualityControl = new QualityControlStation(280, 570, 400, 80);
+        const qualityControl = new QualityControlStation(280, 570, 480, 80);
 
         // Add Loading Bay zones
         this.zoneManager.addZone(loadingDock1);
