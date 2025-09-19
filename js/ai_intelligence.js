@@ -425,8 +425,8 @@ class AIAgent {
             timestamp: Date.now(),
             decision: decision,
             context: {
-                systemLoad: analysis.systemLoad,
-                dockStatus: analysis.loadingDocks.length,
+                systemLoad: analysis.systemLoad || 0,
+                dockStatus: analysis.loadingDocks?.length || 0,
                 queueLength: this.truckQueue.length
             },
             reasoning: this.generateReasoningExplanation(decision, analysis)
@@ -448,7 +448,9 @@ class AIAgent {
     generateReasoningExplanation(decision, analysis) {
         switch (decision.type) {
             case 'assign_truck_to_dock':
-                return `Assigned truck to Dock ${decision.dockId} based on ${Math.round(decision.priority * 100)}% priority score considering capacity (${Math.round(analysis.loadingDocks.find(d => d.dockId === decision.dockId)?.capacity * 100)}%) and efficiency.`;
+                const dock = analysis.loadingDocks?.find(d => d.dockId === decision.dockId);
+                const capacity = dock?.capacity ? Math.round(dock.capacity * 100) : 'unknown';
+                return `Assigned truck to Dock ${decision.dockId} based on ${Math.round((decision.priority || 0) * 100)}% priority score considering capacity (${capacity}%) and efficiency.`;
                 
             case 'optimize_dock_layout':
                 return `Optimizing layout for ${decision.targetDocks.length} dock(s) exceeding ${Math.round(this.dockCapacityThreshold * 100)}% capacity threshold.`;
@@ -470,6 +472,13 @@ class AIAgent {
                 
             case 'no_action':
                 return decision.reason || 'No action required at this time.';
+            
+            case 'system_status_check':
+            case 'performance_analysis':
+            case 'capacity_monitoring':
+            case 'efficiency_assessment':
+            case 'predictive_modeling':
+                return decision.details || 'Routine system monitoring and analysis.';
                 
             default:
                 return 'Decision made based on movement hierarchy and current analysis parameters.';
@@ -487,6 +496,62 @@ class AIAgent {
             lastDecision: this.decisionHistory[0] || null,
             metrics: this.metrics
         };
+    }
+
+    /**
+     * Perform periodic monitoring and log monitoring decisions
+     */
+    performPeriodicMonitoring(simulation) {
+        const monitoringActions = [
+            'system_status_check',
+            'performance_analysis', 
+            'capacity_monitoring',
+            'efficiency_assessment',
+            'predictive_modeling'
+        ];
+        
+        const actionType = monitoringActions[Math.floor(Math.random() * monitoringActions.length)];
+        
+        const decision = {
+            type: actionType,
+            timestamp: Date.now(),
+            priority: 'low',
+            details: this.generateMonitoringDetails(actionType, simulation)
+        };
+        
+        const analysis = {
+            systemLoad: simulation?.entities?.length || 0,
+            queueStatus: simulation?.movementSystem?.qcQueue?.length || 0,
+            entityCount: simulation?.hardwareItems?.length || 0
+        };
+        
+        this.logDecision(decision, analysis);
+        
+        return decision;
+    }
+
+    /**
+     * Generate specific monitoring details based on action type
+     */
+    generateMonitoringDetails(actionType, simulation) {
+        const entityCount = simulation?.entities?.length || 0;
+        const queueLength = simulation?.movementSystem?.qcQueue?.length || 0;
+        const recycleQueue = simulation?.movementSystem?.recyclingQueue?.length || 0;
+        
+        switch (actionType) {
+            case 'system_status_check':
+                return `Monitoring ${entityCount} active entities, system operating normally`;
+            case 'performance_analysis':
+                return `Analyzing throughput: ${this.metrics.qcProcessed} items processed, ${(this.metrics.qcPassedRate * 100).toFixed(1)}% pass rate`;
+            case 'capacity_monitoring':
+                return `Capacity assessment: QC queue ${queueLength} items, recycle queue ${recycleQueue} items`;
+            case 'efficiency_assessment':
+                return `Efficiency metrics: ${this.metrics.placementEfficiency.toFixed(1)}% placement efficiency`;
+            case 'predictive_modeling':
+                return `Predictive analysis: forecasting optimal resource allocation patterns`;
+            default:
+                return 'Routine monitoring operations';
+        }
     }
 
     /**

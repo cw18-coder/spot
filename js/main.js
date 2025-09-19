@@ -20,6 +20,7 @@ class DataCenterSimulation {
         this.lastFrameTime = 0;
         this.frameCount = 0;
         this.fps = 60;
+        this.startTime = Date.now(); // Initialize start time for metrics calculation
         
         // Random truck arrival scheduling
         this.nextTruckArrival = this.getRandomTruckInterval();
@@ -53,6 +54,11 @@ class DataCenterSimulation {
         this.setupDemoHardware();
         this.setupDemoZones();
         this.showLoadingScreen();
+        
+        // Initialize scroll indicator after a brief delay to let panels render
+        setTimeout(() => {
+            this.updateScrollIndicatorVisibility();
+        }, 1000);
     }
 
     initializeCanvases() {
@@ -113,6 +119,12 @@ class DataCenterSimulation {
 
         if (debugModeBtn) {
             debugModeBtn.addEventListener('click', () => this.toggleDebugMode());
+        }
+
+        // Scroll indicator button
+        const scrollIndicatorBtn = document.getElementById('scroll-indicator-btn');
+        if (scrollIndicatorBtn) {
+            scrollIndicatorBtn.addEventListener('click', () => this.scrollToNextPanel());
         }
 
         // Location tab buttons commented out - can be revisited later
@@ -308,6 +320,11 @@ class DataCenterSimulation {
             this.addNotification('🤖 AI Agent Status now updating every 1.5 seconds with live simulation data', 'info');
         }, 4000);
 
+        // Inform about enhanced chat bubble
+        setTimeout(() => {
+            this.addNotification('💬 Click AI Agent Status to see live metrics bubble with 3-decimal precision data', 'info');
+        }, 6000);
+
         // Simulate some items going through QC process
         setTimeout(() => {
             // Find items in loading dock zones and queue them for QC
@@ -404,8 +421,13 @@ class DataCenterSimulation {
         this.updateCamera(adjustedDelta);
         
         // Update AI status more frequently for dynamic feel
-        if (this.frameCount % 90 === 0) { // Every 1.5 seconds
+        if (this.frameCount % 30 === 0) { // Every 0.5 seconds
             this.updateAIStatus();
+        }
+        
+        // Have AI agent perform periodic monitoring to generate decision log entries
+        if (this.frameCount % 180 === 0 && this.aiAgent) { // Every 3 seconds
+            this.aiAgent.performPeriodicMonitoring(this);
         }
         
         // Schedule random truck arrivals (between 60-120 seconds)
@@ -798,6 +820,44 @@ class DataCenterSimulation {
         this.addNotification('View reset to default', 'info');
     }
 
+    scrollToNextPanel() {
+        const infoPanel = document.getElementById('info-panels');
+        if (!infoPanel) return;
+
+        // Get current scroll position and panel height
+        const currentScroll = infoPanel.scrollTop;
+        const panelHeight = infoPanel.clientHeight;
+        
+        // Scroll down by the panel height to show next set of notification boxes
+        infoPanel.scrollTo({
+            top: currentScroll + panelHeight * 0.7, // Scroll 70% of panel height
+            behavior: 'smooth'
+        });
+
+        // Update scroll indicator visibility
+        this.updateScrollIndicatorVisibility();
+    }
+
+    updateScrollIndicatorVisibility() {
+        const infoPanel = document.getElementById('info-panels');
+        const scrollBtn = document.getElementById('scroll-indicator-btn');
+        
+        if (!infoPanel || !scrollBtn) return;
+
+        const isAtBottom = (infoPanel.scrollTop + infoPanel.clientHeight) >= (infoPanel.scrollHeight - 50);
+        
+        if (isAtBottom) {
+            scrollBtn.style.display = 'none';
+        } else {
+            scrollBtn.style.display = 'flex';
+            // Update arrow direction based on scroll position
+            const arrow = scrollBtn.querySelector('span');
+            if (arrow) {
+                arrow.textContent = infoPanel.scrollTop > 100 ? '⬆️' : '⬇️';
+            }
+        }
+    }
+
     /**
      * Show movement options for selected hardware item
      */
@@ -1064,7 +1124,7 @@ class DataCenterSimulation {
         const aiTaskElement = document.getElementById('ai-current-task');
         const aiStatusPanel = document.getElementById('ai-status-panel');
         
-        // Update with new AI Agent system if available
+            // Update with new AI Agent system if available
         if (this.aiAgent && aiTaskElement) {
             // Add visual indication of updates
             if (aiStatusPanel) {
@@ -1073,8 +1133,10 @@ class DataCenterSimulation {
                     aiStatusPanel.classList.remove('ai-status-updating');
                 }, 1000);
             }
-
-            const status = this.aiAgent.getStatus();
+            
+            // Update AI Decision Log and Planning Center
+            this.updateAIDecisionLog();
+            this.updateAIPlanningCenter();            const status = this.aiAgent.getStatus();
             const metrics = this.aiAgent.metrics;
             
             // Generate dynamic status messages based on current simulation state
@@ -1087,32 +1149,35 @@ class DataCenterSimulation {
                 aiTaskElement.textContent = currentMessage;
             }
             
-            // Update the thought bubble with movement system status
+            // Update the thought bubble with comprehensive live data
             const thoughtBubble = document.getElementById('ai-thought-bubble');
             const bubbleContent = document.querySelector('.bubble-content');
             
             if (thoughtBubble && bubbleContent) {
-                let content = `<strong>🤖 AI Movement Intelligence</strong><br>`;
-                content += `State: ${status.state}<br>`;
-                content += `Queue Length: ${status.queueLength}<br><br>`;
+                // Calculate live metrics
+                const liveMetrics = this.calculateLiveAIMetrics();
                 
-                content += `<strong>📊 Performance Metrics:</strong><br>`;
-                content += `Trucks Processed: ${metrics.trucksProcessed}<br>`;
+                let content = `<strong>📊 Performance Metrics:</strong><br>`;
                 content += `QC Processed: ${metrics.qcProcessed}<br>`;
-                content += `QC Pass Rate: ${Math.round(metrics.qcPassedRate * 100)}%<br>`;
-                content += `Failures Detected: ${metrics.failuresDetected}<br>`;
+                content += `QC Pass Rate: ${liveMetrics.qcPassRate}%<br>`;
                 content += `Parts Recycled: ${metrics.recycledParts}<br><br>`;
                 
-                if (status.lastDecision) {
-                    content += `<strong>🧠 Last Decision:</strong><br>`;
-                    content += `${status.lastDecision.reasoning || 'Processing...'}<br>`;
+                // Enhanced System Queues with live calculations (max 3 metrics)
+                if (this.movementSystem) {
+                    const queueMetrics = this.calculateQueueMetrics();
+                    content += `<strong>🔄 System Queues:</strong><br>`;
+                    content += `QC Queue: ${this.movementSystem.qcQueue.length} items<br>`;
+                    content += `Recycle Queue: ${this.movementSystem.recyclingQueue.length} items<br>`;
+                    content += `Queue Efficiency: ${queueMetrics.queueEfficiency}%<br><br>`;
                 }
                 
-                // Show movement system queues
-                if (this.movementSystem) {
-                    content += `<br><strong>🔄 System Queues:</strong><br>`;
-                    content += `QC Queue: ${this.movementSystem.qcQueue.length}<br>`;
-                    content += `Recycle Queue: ${this.movementSystem.recyclingQueue.length}<br>`;
+                // Add real-time zone statistics (max 3 metrics)
+                if (this.zoneManager) {
+                    const zoneStats = this.calculateZoneStatistics();
+                    content += `<strong>🏭 Zone Statistics:</strong><br>`;
+                    content += `Total Zones: ${zoneStats.totalZones}<br>`;
+                    content += `Occupied Zones: ${zoneStats.occupiedZones}<br>`;
+                    content += `Occupancy Rate: ${zoneStats.occupancyRate}%<br>`;
                 }
                 
                 bubbleContent.innerHTML = content;
@@ -1184,7 +1249,352 @@ class DataCenterSimulation {
         return statusMessages;
     }
 
+    /**
+     * Calculate live AI metrics with proper decimal formatting
+     */
+    calculateLiveAIMetrics() {
+        const currentTime = Date.now();
+        const startTime = this.startTime || currentTime;
+        const activeTime = Math.round((currentTime - startTime) / 1000);
+        
+        // Calculate decision rate (decisions per minute)
+        const totalDecisions = (this.aiAgent?.metrics?.trucksProcessed || 0) + 
+                              (this.aiAgent?.metrics?.qcProcessed || 0) + 
+                              (this.aiAgent?.metrics?.recycledParts || 0);
+        const decisionRate = activeTime > 0 ? (totalDecisions * 60 / activeTime).toFixed(3) : '0.000';
+        
+        // Calculate movement efficiency
+        const successfulMoves = (this.aiAgent?.metrics?.qcProcessed || 0) + (this.aiAgent?.metrics?.recycledParts || 0);
+        const totalAttempts = Math.max(1, successfulMoves + (this.aiAgent?.metrics?.failuresDetected || 0));
+        const movementEfficiency = (successfulMoves / totalAttempts * 100).toFixed(3);
+        
+        // QC Pass rate with proper decimals
+        const qcPassRate = ((this.aiAgent?.metrics?.qcPassedRate || 0) * 100).toFixed(3);
+        
+        // System utilization based on active entities vs total capacity
+        const activeEntities = this.entities?.length || 0;
+        const maxCapacity = 50; // Assumed max capacity
+        const systemUtilization = (activeEntities / maxCapacity * 100).toFixed(3);
+        
+        // Average response time simulation
+        const avgResponseTime = (Math.random() * 2 + 1.5).toFixed(3);
+        
+        return {
+            activeTime,
+            decisionRate: parseFloat(decisionRate),
+            movementEfficiency: parseFloat(movementEfficiency),
+            qcPassRate: parseFloat(qcPassRate),
+            systemUtilization: parseFloat(systemUtilization),
+            avgResponseTime: parseFloat(avgResponseTime)
+        };
+    }
 
+    /**
+     * Calculate queue processing metrics
+     */
+    calculateQueueMetrics() {
+        const currentTime = Date.now();
+        
+        // QC Processing rate (items per minute)
+        const qcProcessed = this.aiAgent?.metrics?.qcProcessed || 0;
+        const uptime = Math.max(1, (currentTime - (this.startTime || currentTime)) / 60000); // minutes
+        const qcProcessingRate = (qcProcessed / uptime).toFixed(3);
+        
+        // Queue efficiency based on queue lengths vs processing capacity
+        const qcQueueLength = this.movementSystem?.qcQueue?.length || 0;
+        const recycleQueueLength = this.movementSystem?.recyclingQueue?.length || 0;
+        const totalQueued = qcQueueLength + recycleQueueLength;
+        const maxQueueCapacity = 20; // Assumed max efficient queue size
+        const queueEfficiency = Math.max(0, (1 - totalQueued / maxQueueCapacity) * 100).toFixed(3);
+        
+        // Total throughput (items per hour)
+        const totalProcessed = (this.aiAgent?.metrics?.qcProcessed || 0) + (this.aiAgent?.metrics?.recycledParts || 0);
+        const totalThroughput = (totalProcessed * 60 / Math.max(1, uptime)).toFixed(3);
+        
+        return {
+            qcProcessingRate: parseFloat(qcProcessingRate),
+            queueEfficiency: parseFloat(queueEfficiency),
+            totalThroughput: parseFloat(totalThroughput)
+        };
+    }
+
+    /**
+     * Calculate zone statistics
+     */
+    calculateZoneStatistics() {
+        if (!this.zoneManager) {
+            return {
+                totalZones: 0,
+                occupiedZones: 0,
+                occupancyRate: 0.000,
+                capacityUtilization: 0.000
+            };
+        }
+        
+        const allZones = this.zoneManager.getAllZones();
+        const totalZones = allZones.length;
+        
+        let occupiedZones = 0;
+        let totalCapacity = 0;
+        let totalOccupants = 0;
+        
+        allZones.forEach(zone => {
+            if (zone.occupants && zone.occupants.length > 0) {
+                occupiedZones++;
+            }
+            totalCapacity += zone.capacity || 1;
+            totalOccupants += (zone.occupants?.length || 0);
+        });
+        
+        const occupancyRate = totalZones > 0 ? (occupiedZones / totalZones * 100).toFixed(3) : '0.000';
+        const capacityUtilization = totalCapacity > 0 ? (totalOccupants / totalCapacity * 100).toFixed(3) : '0.000';
+        
+        return {
+            totalZones,
+            occupiedZones,
+            occupancyRate: parseFloat(occupancyRate),
+            capacityUtilization: parseFloat(capacityUtilization)
+        };
+    }
+
+    /**
+     * Update AI Decision Log with live decision data
+     */
+    updateAIDecisionLog() {
+        const decisionList = document.getElementById('ai-decision-list');
+        if (!decisionList || !this.aiAgent) return;
+
+        // Get real decisions from AI agent
+        let decisions = this.aiAgent.decisionHistory.slice(0, 5);
+        
+        // If no real decisions, create simulated monitoring activities
+        if (decisions.length === 0) {
+            decisions = this.generateSimulatedDecisions();
+        }
+        
+        decisionList.innerHTML = decisions.map(decision => {
+            const timeAgo = this.getTimeAgo(decision.timestamp);
+            const decisionType = this.formatDecisionType(decision.decision?.type || decision.type);
+            const reasoning = decision.reasoning || decision.context || 'Monitoring system state...';
+            
+            return `
+                <div class="decision-item">
+                    <span class="decision-time">${timeAgo}</span>
+                    <span class="decision-type">${decisionType}</span>
+                    <div class="decision-context">${reasoning}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    /**
+     * Generate simulated AI monitoring decisions when no real decisions exist
+     */
+    generateSimulatedDecisions() {
+        const now = Date.now();
+        const decisions = [];
+        
+        // System monitoring decision
+        decisions.push({
+            timestamp: now - 2000,
+            type: 'system_monitoring',
+            reasoning: `Monitoring ${this.entities.length} entities, ${this.hardwareItems.length} hardware items`
+        });
+
+        // Performance analysis decision
+        const qcQueueLength = this.movementSystem?.qcQueue?.length || 0;
+        if (qcQueueLength > 0) {
+            decisions.push({
+                timestamp: now - 5000,
+                type: 'qc_analysis',
+                reasoning: `Analyzing QC queue with ${qcQueueLength} pending items`
+            });
+        }
+
+        // Capacity assessment decision
+        decisions.push({
+            timestamp: now - 8000,
+            type: 'capacity_assessment',
+            reasoning: `Storage utilization at ${Math.round(Math.random() * 40 + 60)}%, optimizing space allocation`
+        });
+
+        // Efficiency optimization decision
+        decisions.push({
+            timestamp: now - 12000,
+            type: 'efficiency_optimization',
+            reasoning: `Processing throughput at ${Math.round(Math.random() * 20 + 80)}%, monitoring for improvements`
+        });
+
+        // Predictive planning decision
+        decisions.push({
+            timestamp: now - 18000,
+            type: 'predictive_planning',
+            reasoning: `Forecasting resource needs based on current patterns`
+        });
+
+        return decisions.slice(0, 5);
+    }
+
+    /**
+     * Update AI Planning Center with current planning activities
+     */
+    updateAIPlanningCenter() {
+        const plansList = document.getElementById('active-plans');
+        if (!plansList) return;
+
+        // Generate dynamic planning activities based on current simulation state
+        const plans = this.generateCurrentPlans();
+        
+        if (plans.length === 0) {
+            plansList.innerHTML = '<div class="plan-item">No active plans</div>';
+            return;
+        }
+
+        plansList.innerHTML = plans.map(plan => `
+            <div class="plan-item">
+                <div class="plan-title">${plan.title}</div>
+                <div class="plan-status">${plan.status}</div>
+                <div class="plan-progress">${plan.progress}</div>
+            </div>
+        `).join('');
+    }
+
+    /**
+     * Generate current planning activities based on simulation state
+     */
+    generateCurrentPlans() {
+        const plans = [];
+        const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        if (!this.aiAgent && !this.movementSystem) {
+            // Return basic system plans even without AI agent
+            plans.push({
+                title: 'System Initialization',
+                status: 'Setting up AI systems',
+                progress: 'Loading decision frameworks...'
+            });
+            return plans;
+        }
+
+        // Dynamic planning based on simulation state
+        const entityCount = this.entities?.length || 0;
+        const hardwareCount = this.hardwareItems?.length || 0;
+        const qcQueueLength = this.movementSystem?.qcQueue?.length || 0;
+        const recycleQueueLength = this.movementSystem?.recyclingQueue?.length || 0;
+
+        // QC Queue Management Plan
+        if (qcQueueLength > 0) {
+            const priority = qcQueueLength > 3 ? 'High Priority' : 'Normal';
+            plans.push({
+                title: 'QC Processing Pipeline',
+                status: `${priority}: ${qcQueueLength} items`,
+                progress: `Next review at ${this.getTimeOffset(2)} mins`
+            });
+        }
+
+        // Recycling Operations Plan  
+        if (recycleQueueLength > 0) {
+            plans.push({
+                title: 'Waste Management',
+                status: `${recycleQueueLength} items queued`,
+                progress: `Disposal cycle: ${this.getTimeOffset(5)} mins`
+            });
+        }
+
+        // Resource Management Plan
+        if (hardwareCount > 0) {
+            const utilizationRate = Math.min(95, 60 + (hardwareCount * 2));
+            plans.push({
+                title: 'Resource Optimization',
+                status: `${hardwareCount} items tracked`,
+                progress: `${utilizationRate}% efficiency target`
+            });
+        }
+
+        // Performance Monitoring Plan
+        if (entityCount > 0) {
+            plans.push({
+                title: 'Performance Analysis',
+                status: `Monitoring ${entityCount} entities`,
+                progress: `Report due ${this.getTimeOffset(10)} mins`
+            });
+        }
+
+        // Capacity Planning
+        const storageLoad = Math.round(Math.random() * 30 + 50); // 50-80%
+        plans.push({
+            title: 'Capacity Management',
+            status: `${storageLoad}% storage utilized`,
+            progress: storageLoad > 75 ? 'Expansion planning' : 'Normal operations'
+        });
+
+        // Predictive Maintenance Plan
+        plans.push({
+            title: 'Predictive Maintenance',
+            status: 'Analyzing wear patterns',
+            progress: `Next check: ${this.getTimeOffset(30)} mins`
+        });
+
+        // Default system monitoring if no specific activities
+        if (plans.length === 0) {
+            plans.push({
+                title: 'System Monitoring',
+                status: 'All systems operational',
+                progress: `Status updated: ${currentTime}`
+            });
+        }
+
+        return plans.slice(0, 4); // Limit to 4 most relevant plans
+    }
+
+    /**
+     * Helper to get time offset for planning displays
+     */
+    getTimeOffset(minutes) {
+        const future = new Date(Date.now() + minutes * 60000);
+        return future.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    /**
+     * Format decision type for display
+     */
+    formatDecisionType(type) {
+        const typeMap = {
+            'assign_truck_to_dock': '🚛 Truck Assignment',
+            'move_item_to_qc': '🔍 QC Processing',
+            'qc_pass': '✅ QC Passed',
+            'qc_fail': '❌ QC Failed',
+            'move_to_storage': '📦 Storage Move',
+            'move_to_recycle': '♻️ Recycling',
+            'capacity_optimization': '📊 Capacity Opt',
+            'system_monitoring': '👁️ System Monitor',
+            'qc_analysis': '🔬 QC Analysis',
+            'capacity_assessment': '📏 Capacity Check',
+            'efficiency_optimization': '⚡ Efficiency Opt',
+            'predictive_planning': '🔮 Predictive Plan',
+            'default': '🤖 AI Decision'
+        };
+        
+        return typeMap[type] || typeMap['default'];
+    }
+
+    /**
+     * Get human-readable time ago string
+     */
+    getTimeAgo(timestamp) {
+        const now = Date.now();
+        const diff = now - timestamp;
+        const seconds = Math.floor(diff / 1000);
+        const minutes = Math.floor(seconds / 60);
+        
+        if (minutes < 1) return `${seconds}s ago`;
+        if (minutes < 60) return `${minutes}m ago`;
+        
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        
+        return 'Yesterday';
+    }
 
     updateMetricsDisplay() {
         const stats = this.inventoryManager.getItemsByType('GPU').length > 0 ? 

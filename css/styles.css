@@ -121,22 +121,28 @@ body {
     max-width: 450px;
 }
 
-/* Webkit scrollbar styling for info panels */
+/* Webkit scrollbar styling for info panels - Always visible */
 #info-panels::-webkit-scrollbar {
-    width: 8px;
+    width: 12px;
+    background: rgba(0, 0, 0, 0.5);
 }
 
 #info-panels::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 6px;
+    border: 1px solid rgba(0, 255, 136, 0.2);
 }
 
 #info-panels::-webkit-scrollbar-thumb {
-    background: #00ff88;
-    border-radius: 4px;
+    background: linear-gradient(145deg, #00ff88, #00d4ff);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 #info-panels::-webkit-scrollbar-thumb:hover {
-    background: #00d4ff;
+    background: linear-gradient(145deg, #00d4ff, #00ff88);
+    box-shadow: 0 2px 6px rgba(0, 255, 136, 0.4);
 }
 
 canvas {
@@ -265,44 +271,111 @@ canvas {
 }
 
 .decision-item {
-    padding: 6px 0;
+    padding: 8px;
+    margin-bottom: 4px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    font-size: 0.85em;
+    font-size: 0.82em;
+    background: rgba(0, 255, 136, 0.05);
+    border-radius: 4px;
+    transition: background 0.3s ease;
+}
+
+.decision-item:hover {
+    background: rgba(0, 255, 136, 0.1);
 }
 
 .decision-item:last-child {
     border-bottom: none;
 }
 
-/* Scrollbar styling for individual panels */
+.decision-time {
+    color: #00d4ff;
+    font-size: 0.75em;
+    float: right;
+}
+
+.decision-type {
+    font-weight: bold;
+    color: #00ff88;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.decision-context {
+    color: #ffffff;
+    font-size: 0.9em;
+    opacity: 0.8;
+    line-height: 1.2;
+}
+
+/* Plan item styling */
+.plan-item {
+    padding: 8px;
+    margin-bottom: 6px;
+    background: rgba(0, 212, 255, 0.08);
+    border-left: 3px solid #00d4ff;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.82em;
+    transition: all 0.3s ease;
+}
+
+.plan-item:hover {
+    background: rgba(0, 212, 255, 0.15);
+    border-left-width: 4px;
+}
+
+.plan-title {
+    font-weight: bold;
+    color: #00d4ff;
+    margin-bottom: 3px;
+}
+
+.plan-status {
+    color: #ffffff;
+    font-size: 0.9em;
+    margin-bottom: 2px;
+}
+
+.plan-progress {
+    color: #ffaa00;
+    font-size: 0.85em;
+    font-style: italic;
+}
+
+/* Scrollbar styling for individual panels - Always visible and prominent */
 .panel::-webkit-scrollbar,
 #ai-decision-list::-webkit-scrollbar,
 #active-plans::-webkit-scrollbar,
 #notification-list::-webkit-scrollbar {
-    width: 6px;
+    width: 10px;
+    background: rgba(0, 0, 0, 0.4);
 }
 
 .panel::-webkit-scrollbar-track,
 #ai-decision-list::-webkit-scrollbar-track,
 #active-plans::-webkit-scrollbar-track,
 #notification-list::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 5px;
+    border: 1px solid rgba(0, 255, 136, 0.2);
 }
 
 .panel::-webkit-scrollbar-thumb,
 #ai-decision-list::-webkit-scrollbar-thumb,
 #active-plans::-webkit-scrollbar-thumb,
 #notification-list::-webkit-scrollbar-thumb {
-    background: rgba(0, 255, 136, 0.6);
-    border-radius: 3px;
+    background: linear-gradient(145deg, #00ff88, #00d4ff);
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .panel::-webkit-scrollbar-thumb:hover,
 #ai-decision-list::-webkit-scrollbar-thumb:hover,
 #active-plans::-webkit-scrollbar-thumb:hover,
 #notification-list::-webkit-scrollbar-thumb:hover {
-    background: #00ff88;
+    background: linear-gradient(145deg, #00d4ff, #00ff88);
+    box-shadow: 0 2px 5px rgba(0, 255, 136, 0.4);
 }
 
 
@@ -711,4 +784,48 @@ canvas {
     font-size: 11px;
     color: #ffaa00;
     font-style: italic;
+}
+
+/* Scroll indicator button */
+.scroll-btn {
+    position: fixed;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 60px;
+    background: linear-gradient(145deg, #00ff88, #00d4ff);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    box-shadow: 0 4px 15px rgba(0, 255, 136, 0.4);
+    transition: all 0.3s ease;
+    animation: scrollBtnPulse 3s ease-in-out infinite;
+}
+
+.scroll-btn:hover {
+    background: linear-gradient(145deg, #00d4ff, #00ff88);
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 255, 136, 0.6);
+}
+
+.scroll-btn span {
+    font-size: 16px;
+    color: #1e3c72;
+    font-weight: bold;
+}
+
+@keyframes scrollBtnPulse {
+    0%, 100% { 
+        opacity: 0.7;
+        transform: translateY(-50%) scale(1);
+    }
+    50% { 
+        opacity: 1;
+        transform: translateY(-50%) scale(1.05);
+    }
 }
