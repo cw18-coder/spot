@@ -800,7 +800,7 @@ class RecycleBinZone extends InteractionZone {
         const maxY = Math.max(...combinedZones.map(z => z.position.y + z.size.height));
         
         // Position below the zones with larger margin to avoid QC station
-        this.position = { x: minX, y: maxY + 120 };
+        this.position = { x: minX, y: maxY + 180 };
         this.size = { width: maxX - minX, height: 80 };
         
         console.log(`♻️ Recycle Bin positioned at (${this.position.x}, ${this.position.y}) with size ${this.size.width}x${this.size.height}`);

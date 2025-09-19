@@ -38,10 +38,20 @@ class Entity {
             }
         }
         
+        // Strict boundary checking to prevent items from flying off screen
         const canvas = document.getElementById('entity-canvas');
         if (canvas) {
-            this.position.x = Math.max(0, Math.min(canvas.width - this.size.width, this.position.x));
-            this.position.y = Math.max(0, Math.min(canvas.height - this.size.height, this.position.y));
+            const margin = 10;
+            this.position.x = Math.max(margin, Math.min(canvas.width - this.size.width - margin, this.position.x));
+            this.position.y = Math.max(margin, Math.min(canvas.height - this.size.height - margin, this.position.y));
+            
+            // If position was corrected, stop movement to prevent continuous boundary violations
+            if (this.position.x <= margin || this.position.x >= canvas.width - this.size.width - margin ||
+                this.position.y <= margin || this.position.y >= canvas.height - this.size.height - margin) {
+                this.stop();
+                this.targetPosition = null;
+                console.warn(`⚠️ Item ${this.hardwareType || this.type} reached boundary, movement stopped`);
+            }
         }
     }
 

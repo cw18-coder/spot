@@ -26,13 +26,13 @@ class AIAgent {
         this.dockCapacityThreshold = 0.9; // 90% capacity threshold
         this.truckQueue = [];
         
-        // Movement hierarchy rules
+        // Movement hierarchy rules - STRICT PATHS ONLY
         this.movementRules = {
-            'loading-dock': ['qc-station'], // Parts from docks can only go to QC Station
-            'qc-station': ['storage-bin', 'recycle-bin'], // QC can send to storage or recycle
-            'storage-bin': ['rack-slot', 'storage-bin'], // Storage bins can go to other bins or RRs
-            'rack-slot': ['recycle-bin'], // RRs only go to recycle bin on failure
-            'recycle-bin': [] // Recycle bin is final destination
+            'loading-dock': ['loading-dock', 'qc-station'], // dock>dock, dock>qc only
+            'qc-station': ['storage-bin', 'recycle-bin'], // qc>bin, qc>recycle only  
+            'storage-bin': ['rack-slot'], // bin>rr only (storage-bin to storage-bin removed)
+            'rack-slot': ['recycle-bin'], // rr>recycle only
+            'recycle-bin': ['remove-offscreen'] // recycle>remove only
         };
         
         // QC Station decision parameters
@@ -73,8 +73,8 @@ class AIAgent {
      * Validate if parts can move between zones of the same type
      */
     canMoveBetweenSameType(zoneType, hardwareType) {
-        // Allow movement between same types for loading docks and storage bins
-        const allowedSameTypeMovement = ['loading-dock', 'storage-bin'];
+        // Only allow dock-to-dock movement based on strict rules
+        const allowedSameTypeMovement = ['loading-dock'];
         return allowedSameTypeMovement.includes(zoneType);
     }
 
@@ -785,6 +785,20 @@ class MovementManagementSystem {
      */
     performMovement(item, targetZoneType, gameState, movementPlan) {
         try {
+            // Handle special case: remove-offscreen
+            if (targetZoneType === 'remove-offscreen') {
+                return this.removeItemOffScreen(item, gameState);
+            }
+
+            // Validate movement is allowed by hierarchy rules
+            const currentZone = this.aiAgent.findItemCurrentZone(item, gameState);
+            const currentZoneType = currentZone ? this.aiAgent.getZoneTypeFromZone(currentZone) : 'unknown';
+            
+            if (!this.aiAgent.isMovementAllowed(currentZoneType, targetZoneType)) {
+                console.warn(`❌ Movement not allowed: ${currentZoneType} → ${targetZoneType} for ${item.hardwareType}`);
+                return false;
+            }
+
             // Find available target zone
             const targetZone = this.findAvailableZone(targetZoneType, gameState, item);
             
@@ -794,25 +808,85 @@ class MovementManagementSystem {
             }
 
             // Remove from current zone
-            const currentZone = this.aiAgent.findItemCurrentZone(item, gameState);
             if (currentZone) {
                 this.removeFromZone(item, currentZone);
             }
 
-            // Add to target zone
+            // Add to target zone and ensure position is within bounds
             this.addToZone(item, targetZone);
+            this.validateItemPosition(item, gameState);
 
             // Update item properties
             item.location = this.getLocationFromZoneType(targetZoneType);
             
             // Log movement
-            console.log(`✅ Moved ${item.hardwareType} from ${currentZone?.type || 'unknown'} to ${targetZone.type}`);
+            console.log(`✅ Moved ${item.hardwareType} from ${currentZoneType} to ${targetZone.type}`);
             
             return true;
 
         } catch (error) {
             console.error(`❌ Movement failed for ${item.hardwareType}:`, error);
             return false;
+        }
+    }
+
+    /**
+     * Remove item from simulation (offscreen)
+     */
+    removeItemOffScreen(item, gameState) {
+        try {
+            // Remove from current zone
+            const currentZone = this.aiAgent.findItemCurrentZone(item, gameState);
+            if (currentZone) {
+                this.removeFromZone(item, currentZone);
+            }
+
+            // Remove from entities array in main simulation
+            if (gameState.entities) {
+                const entityIndex = gameState.entities.findIndex(entity => entity.id === item.id);
+                if (entityIndex !== -1) {
+                    gameState.entities.splice(entityIndex, 1);
+                }
+            }
+
+            // Remove from hardware items array
+            if (gameState.hardwareItems) {
+                const itemIndex = gameState.hardwareItems.findIndex(hwItem => hwItem.id === item.id);
+                if (itemIndex !== -1) {
+                    gameState.hardwareItems.splice(itemIndex, 1);
+                }
+            }
+
+            console.log(`🗑️ Removed ${item.hardwareType} from simulation (off-screen)`);
+            return true;
+
+        } catch (error) {
+            console.error(`❌ Failed to remove ${item.hardwareType} from simulation:`, error);
+            return false;
+        }
+    }
+
+    /**
+     * Validate and correct item position to prevent flying off screen
+     */
+    validateItemPosition(item, gameState) {
+        const canvas = document.getElementById('entity-canvas');
+        if (!canvas) return;
+
+        // Clamp position to canvas boundaries
+        const margin = 10;
+        item.position.x = Math.max(margin, Math.min(canvas.width - item.size.width - margin, item.position.x));
+        item.position.y = Math.max(margin, Math.min(canvas.height - item.size.height - margin, item.position.y));
+        
+        // Stop any velocity that might cause movement
+        if (item.velocity) {
+            item.velocity.x = 0;
+            item.velocity.y = 0;
+        }
+        
+        // Clear any target position
+        if (item.targetPosition) {
+            item.targetPosition = null;
         }
     }
 
@@ -930,6 +1004,11 @@ class MovementManagementSystem {
             if (this.executeMovement(recyclingItem.item, 'recycle-bin', gameState)) {
                 this.aiAgent.metrics.recycledParts++;
                 console.log(`♻️ Successfully recycled failed ${recyclingItem.item.hardwareType}`);
+                
+                // After a delay, remove recycled items from simulation
+                setTimeout(() => {
+                    this.executeMovement(recyclingItem.item, 'remove-offscreen', gameState);
+                }, 5000); // 5 second delay before removal
             }
         }
     }
