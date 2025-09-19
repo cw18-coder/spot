@@ -30,8 +30,8 @@ class AIAgent {
         this.movementRules = {
             'loading-dock': ['qc-station'], // Parts from docks can only go to QC Station
             'qc-station': ['storage-bin', 'recycle-bin'], // QC can send to storage or recycle
-            'storage-bin': ['server-rack', 'storage-bin'], // Storage bins can go to other bins or RRs
-            'server-rack': ['recycle-bin'], // RRs only go to recycle bin on failure
+            'storage-bin': ['rack-slot', 'storage-bin'], // Storage bins can go to other bins or RRs
+            'rack-slot': ['recycle-bin'], // RRs only go to recycle bin on failure
             'recycle-bin': [] // Recycle bin is final destination
         };
         
@@ -687,8 +687,8 @@ class AIAgent {
         const zoneTypeMap = {
             'loading-dock': 'loading-dock',
             'storage-bin': 'storage-bin',
-            'server-rack': 'server-rack',
-            'quality-control': 'qc-station',
+            'rack-slot': 'rack-slot',
+            'qc-station': 'qc-station',
             'recycle-bin': 'recycle-bin'
         };
         return zoneTypeMap[zone.type] || zone.type;
@@ -736,8 +736,8 @@ class AIAgent {
         const baseTimes = {
             'loading-dock': { 'qc-station': 45 },
             'qc-station': { 'storage-bin': 30, 'recycle-bin': 20 },
-            'storage-bin': { 'server-rack': 60, 'storage-bin': 25 },
-            'server-rack': { 'recycle-bin': 40 }
+            'storage-bin': { 'rack-slot': 60, 'storage-bin': 25 },
+            'rack-slot': { 'recycle-bin': 40 }
         };
 
         return baseTimes[fromZone]?.[toZone] || 60; // Default 60 seconds
@@ -823,22 +823,76 @@ class MovementManagementSystem {
         if (this.qcQueue.length === 0) return;
 
         const allZones = gameState.zoneManager.getAllZones();
-        const qcStation = allZones.find(zone => zone.type === 'quality-control');
-        if (!qcStation || qcStation.occupants.length >= qcStation.capacity) return;
+        const qcStation = allZones.find(zone => zone.type === 'qc-station');
+        if (!qcStation) {
+            console.warn('QC Station not found');
+            return;
+        }
 
-        // Process one item at a time
+        // Check if QC station has capacity for more items
+        if (qcStation.occupants.length >= qcStation.capacity) {
+            console.log('🔍 QC Station at capacity, waiting...');
+            return;
+        }
+
+        // Move item from queue to QC station
         const item = this.qcQueue.shift();
-        const qcResult = this.aiAgent.makeQCDecision(item);
-
-        // Determine destination based on QC result
-        const destination = qcResult.passed ? 'storage-bin' : 'recycle-bin';
         
-        // Schedule movement after processing time
-        setTimeout(() => {
-            this.executeMovement(item, destination, gameState);
-        }, qcResult.processingTime * 1000);
+        // Remove item from current location
+        const currentZone = this.aiAgent.findItemCurrentZone(item, gameState);
+        if (currentZone) {
+            this.removeFromZone(item, currentZone);
+        }
+        
+        // Add item to QC station
+        this.addToZone(item, qcStation);
+        item.location = 'quality-control';
+        
+        console.log(`🔍 ${item.hardwareType} moved to QC Station for inspection`);
 
-        console.log(`🔍 Processing ${item.hardwareType} through QC - ${qcResult.passed ? 'PASS' : 'FAIL'}`);
+        // The QC station will handle the inspection process
+        // We'll check for completed inspections in another method
+    }
+
+    /**
+     * Process completed QC inspections and route items to destinations
+     */
+    processQCCompletions(gameState) {
+        const allZones = gameState.zoneManager.getAllZones();
+        const qcStation = allZones.find(zone => zone.type === 'qc-station');
+        
+        if (!qcStation || !qcStation.occupants) return;
+
+        // Check for items that have completed inspection
+        const completedItems = qcStation.occupants.filter(item => 
+            item.condition && (item.condition === 'verified' || item.condition === 'defective')
+        );
+
+        completedItems.forEach(item => {
+            // Remove from QC station
+            this.removeFromZone(item, qcStation);
+            
+            // Determine destination
+            const destination = item.condition === 'verified' ? 'storage-bin' : 'recycle-bin';
+            
+            // Execute movement to final destination
+            if (this.executeMovement(item, destination, gameState)) {
+                console.log(`🔍 QC Complete: ${item.hardwareType} ${item.condition} → ${destination}`);
+                
+                // Update AI metrics
+                this.aiAgent.metrics.qcProcessed++;
+                if (item.condition === 'verified') {
+                    this.aiAgent.metrics.qcPassedRate = this.aiAgent.calculateNewAverage(
+                        this.aiAgent.metrics.qcPassedRate, 1, this.aiAgent.metrics.qcProcessed
+                    );
+                } else {
+                    this.aiAgent.metrics.qcPassedRate = this.aiAgent.calculateNewAverage(
+                        this.aiAgent.metrics.qcPassedRate, 0, this.aiAgent.metrics.qcProcessed
+                    );
+                    this.aiAgent.metrics.failuresDetected++;
+                }
+            }
+        });
     }
 
     /**
@@ -846,7 +900,7 @@ class MovementManagementSystem {
      */
     checkAndHandleRRFailures(gameState) {
         const allZones = gameState.zoneManager.getAllZones();
-        const serverRacks = allZones.filter(zone => zone.type === 'server-rack');
+        const serverRacks = allZones.filter(zone => zone.type === 'rack-slot');
         
         serverRacks.forEach(rack => {
             rack.occupants.forEach(item => {
@@ -942,7 +996,7 @@ class MovementManagementSystem {
             'loading-dock': 'loading-bay',
             'qc-station': 'quality-control',
             'storage-bin': 'storage-room',
-            'server-rack': 'server-floor',
+            'rack-slot': 'server-floor',
             'recycle-bin': 'recycle-area'
         };
         return locationMap[zoneType] || 'unknown';
@@ -1051,7 +1105,7 @@ class RecycleBin {
         // Calculate position to span storage room and server floor
         const allZones = gameState.zoneManager.getAllZones();
         const storageZones = allZones.filter(z => z.type === 'storage-bin');
-        const serverZones = allZones.filter(z => z.type === 'server-rack');
+        const serverZones = allZones.filter(z => z.type === 'rack-slot');
         
         if (storageZones.length === 0 || serverZones.length === 0) {
             console.warn('Cannot create recycle bin - missing storage or server zones');

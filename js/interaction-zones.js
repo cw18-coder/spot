@@ -513,9 +513,49 @@ class QualityControlStation extends InteractionZone {
         this.inspectionTimer = 0;
     }
 
-    renderLabel(ctx) {
-        super.renderLabel(ctx);
+    render(ctx) {
+        if (!this.isActive) return;
+
+        ctx.save();
         
+        // Calculate dynamic opacity for pulse effect
+        let currentOpacity = this.opacity;
+        if (this.isHighlighted) {
+            currentOpacity += 0.2 * Math.sin(this.animationFrame);
+        }
+        
+        // Zone background
+        let fillColor = this.color;
+        if (this.isHighlighted) {
+            fillColor = this.highlightColor;
+        } else if (this.isOccupied && this.capacity <= this.occupants.length) {
+            fillColor = this.occupiedColor;
+        }
+        
+        ctx.fillStyle = fillColor + Math.floor(currentOpacity * 255).toString(16).padStart(2, '0');
+        ctx.fillRect(this.position.x, this.position.y, this.size.width, this.size.height);
+        
+        // Zone border
+        ctx.strokeStyle = this.isHighlighted ? this.highlightColor : this.borderColor;
+        ctx.lineWidth = this.borderWidth;
+        ctx.setLineDash(this.isHighlighted ? [5, 5] : []);
+        ctx.strokeRect(this.position.x, this.position.y, this.size.width, this.size.height);
+        ctx.setLineDash([]);
+        
+        // Capacity indicator
+        this.renderCapacityIndicator(ctx);
+        
+        // Centered QC Station label
+        ctx.fillStyle = this.borderColor;
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(
+            'QC STATION',
+            this.position.x + this.size.width / 2,
+            this.position.y + this.size.height / 2 + 5
+        );
+        
+        // Inspection status
         if (this.isInspecting) {
             ctx.fillStyle = '#ffff00';
             ctx.font = '10px Arial';
@@ -523,19 +563,38 @@ class QualityControlStation extends InteractionZone {
             ctx.fillText(
                 'INSPECTING',
                 this.position.x + this.size.width / 2,
-                this.position.y + this.size.height - 15
+                this.position.y + this.size.height - 25
             );
             
             // Progress bar
-            const progressWidth = this.size.width - 20;
+            const progressWidth = this.size.width - 40;
             const progress = 1 - (this.inspectionTimer / this.inspectionTime);
             
             ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-            ctx.fillRect(this.position.x + 10, this.position.y + this.size.height - 10, progressWidth, 4);
+            ctx.fillRect(this.position.x + 20, this.position.y + this.size.height - 15, progressWidth, 4);
             
             ctx.fillStyle = '#00ff88';
-            ctx.fillRect(this.position.x + 10, this.position.y + this.size.height - 10, progressWidth * progress, 4);
+            ctx.fillRect(this.position.x + 20, this.position.y + this.size.height - 15, progressWidth * progress, 4);
         }
+        
+        // Queue indicator
+        if (this.inspectionQueue.length > 0) {
+            ctx.fillStyle = '#ff6b6b';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText(
+                `Queue: ${this.inspectionQueue.length}`,
+                this.position.x + this.size.width - 10,
+                this.position.y + 20
+            );
+        }
+        
+        ctx.restore();
+    }
+
+    renderLabel(ctx) {
+        // Custom render method above handles the label
+        // Keep this method for compatibility but don't call super
     }
 }
 
@@ -716,11 +775,21 @@ class RecycleBinZone extends InteractionZone {
      */
     autoPosition(zoneManager) {
         const allZones = zoneManager.getAllZones();
+        console.log('♻️ AutoPosition: Found', allZones.length, 'total zones');
+        console.log('♻️ AutoPosition: All zone types:', allZones.map(z => `${z.type} (${z.id})`));
+        
         const storageZones = allZones.filter(z => z.type === 'storage-bin');
-        const serverZones = allZones.filter(z => z.type === 'server-rack');
+        const serverZones = allZones.filter(z => z.type === 'rack-slot');
+        
+        console.log('♻️ AutoPosition: Storage zones:', storageZones.length, 'Server zones:', serverZones.length);
         
         if (storageZones.length === 0 || serverZones.length === 0) {
-            console.warn('Cannot position recycle bin - missing storage or server zones');
+            console.warn('♻️ Cannot position recycle bin - missing storage or server zones');
+            console.warn('♻️ Available zone types:', allZones.map(z => z.type));
+            // Try to position anyway at bottom of canvas
+            this.position = { x: 50, y: 700 };
+            this.size = { width: 600, height: 80 };
+            console.log('♻️ Fallback positioning at (50, 700)');
             return;
         }
 
@@ -730,15 +799,25 @@ class RecycleBinZone extends InteractionZone {
         const maxX = Math.max(...combinedZones.map(z => z.position.x + z.size.width));
         const maxY = Math.max(...combinedZones.map(z => z.position.y + z.size.height));
         
-        // Position below the zones with some margin
-        this.position = { x: minX, y: maxY + 20 };
+        // Position below the zones with larger margin to avoid QC station
+        this.position = { x: minX, y: maxY + 120 };
         this.size = { width: maxX - minX, height: 80 };
         
         console.log(`♻️ Recycle Bin positioned at (${this.position.x}, ${this.position.y}) with size ${this.size.width}x${this.size.height}`);
     }
 
     render(ctx) {
-        if (!this.isActive || this.size.width === 0) return;
+        if (!this.isActive) {
+            console.warn('♻️ Recycle bin not rendering - not active');
+            return;
+        }
+        
+        if (this.size.width === 0) {
+            console.warn('♻️ Recycle bin not rendering - size is 0. Position:', this.position, 'Size:', this.size);
+            return;
+        }
+        
+        console.log('♻️ Rendering recycle bin at', this.position, 'with size', this.size);
 
         ctx.save();
         

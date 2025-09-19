@@ -224,7 +224,7 @@ class DataCenterSimulation {
         const serverRack5 = new ServerRackSlot(820, 440, 120, 110, 'R3', 1);
         const serverRack6 = new ServerRackSlot(960, 440, 120, 110, 'R3', 2);
         
-        const qualityControl = new QualityControlStation(280, 570, 180, 80);
+        const qualityControl = new QualityControlStation(280, 570, 400, 80);
 
         // Add Loading Bay zones
         this.zoneManager.addZone(loadingDock1);
@@ -256,8 +256,40 @@ class DataCenterSimulation {
 
         console.log('✅ Created demo interaction zones with corrected layouts and recycle bin');
         
+        // Associate existing hardware items with appropriate zones
+        this.associateItemsWithZones();
+        
         // Initialize movement demonstration after zones are created
         this.setupMovementDemonstration();
+    }
+
+    /**
+     * Associate existing hardware items with their appropriate zones
+     */
+    associateItemsWithZones() {
+        this.hardwareItems.forEach(item => {
+            // Find the zone that contains this item based on position
+            const containingZone = this.zoneManager.getAllZones().find(zone => {
+                return item.position.x >= zone.position.x && 
+                       item.position.x <= zone.position.x + zone.size.width &&
+                       item.position.y >= zone.position.y && 
+                       item.position.y <= zone.position.y + zone.size.height;
+            });
+            
+            if (containingZone) {
+                if (!containingZone.occupants) {
+                    containingZone.occupants = [];
+                }
+                
+                // Only add if not already present
+                if (!containingZone.occupants.includes(item)) {
+                    containingZone.occupants.push(item);
+                    console.log(`📦 Associated ${item.hardwareType} with ${containingZone.type} zone`);
+                }
+            }
+        });
+        
+        console.log('✅ Hardware items associated with zones');
     }
 
     /**
@@ -268,20 +300,29 @@ class DataCenterSimulation {
 
         // Simulate some items going through QC process
         setTimeout(() => {
-            // Find items in loading docks and queue them for QC
-            const loadingDockItems = this.hardwareItems.filter(item => item.location === 'loading-bay');
+            // Find items in loading dock zones and queue them for QC
+            const loadingDockZones = this.zoneManager.getAllZones().filter(zone => zone.type === 'loading-dock');
+            let itemsToQC = [];
             
-            if (loadingDockItems.length > 0) {
-                // Add first few items to QC queue
-                const itemsToQC = loadingDockItems.slice(0, 3);
+            loadingDockZones.forEach(dock => {
+                if (dock.occupants && dock.occupants.length > 0) {
+                    // Take first item from each dock
+                    itemsToQC.push(dock.occupants[0]);
+                }
+            });
+            
+            if (itemsToQC.length > 0) {
+                // Add items to QC queue
                 itemsToQC.forEach(item => {
                     this.movementSystem.qcQueue.push(item);
                     console.log(`📝 Added ${item.hardwareType} to QC queue for processing`);
                 });
                 
-                this.addNotification(`${itemsToQC.length} items queued for Quality Control inspection`, 'info');
+                this.addNotification(`${itemsToQC.length} items automatically queued for QC inspection`, 'info');
+            } else {
+                console.log('No items found in loading docks for QC processing');
             }
-        }, 5000); // Start demo after 5 seconds
+        }, 3000); // Start demo after 3 seconds
 
         // Simulate some RR failures periodically
         setInterval(() => {
@@ -332,6 +373,11 @@ class DataCenterSimulation {
             // Process QC queue every 2 seconds
             if (this.frameCount % 120 === 0) {
                 this.movementSystem.processQCQueue(this);
+            }
+            
+            // Process QC completions every second
+            if (this.frameCount % 60 === 0) {
+                this.movementSystem.processQCCompletions(this);
             }
             
             // Check for RR failures every 10 seconds
@@ -763,13 +809,20 @@ class DataCenterSimulation {
         // Demo: Auto-move item through QC process if it's in loading dock
         if (currentZoneType === 'loading-dock') {
             console.log(`🏭 Demonstrating: Moving ${item.hardwareType} to QC Station`);
-            this.movementSystem.qcQueue.push(item);
-            this.addNotification(`${item.hardwareType} added to QC processing queue`, 'info');
+            
+            // Check if item is already in QC queue
+            const alreadyQueued = this.movementSystem.qcQueue.find(qItem => qItem.id === item.id);
+            if (!alreadyQueued) {
+                this.movementSystem.qcQueue.push(item);
+                this.addNotification(`${item.hardwareType} added to QC processing queue`, 'info');
+            } else {
+                this.addNotification(`${item.hardwareType} already in QC queue`, 'warning');
+            }
         } else if (currentZoneType === 'storage-bin') {
             // Demo: Move to server rack
             console.log(`🖥️ Demonstrating: Installing ${item.hardwareType} in server rack`);
             setTimeout(() => {
-                if (this.movementSystem.executeMovement(item, 'server-rack', this)) {
+                if (this.movementSystem.executeMovement(item, 'rack-slot', this)) {
                     this.addNotification(`${item.hardwareType} installed in server rack`, 'success');
                 }
             }, 2000);
