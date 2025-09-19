@@ -85,7 +85,6 @@ class DataCenterSimulation {
         const resetBtn = document.getElementById('reset-btn');
         const resetViewBtn = document.getElementById('reset-view-btn');
         const truckArrivalBtn = document.getElementById('truck-arrival-btn');
-        const forkliftTaskBtn = document.getElementById('forklift-task-btn');
         const debugModeBtn = document.getElementById('debug-mode-btn');
 
         if (playPauseBtn) {
@@ -108,20 +107,12 @@ class DataCenterSimulation {
             truckArrivalBtn.addEventListener('click', () => this.simulateTruckArrival());
         }
 
-        if (forkliftTaskBtn) {
-            console.log('✅ Forklift button found and event listener added');
-            forkliftTaskBtn.addEventListener('click', () => {
-                console.log('🏗️ Forklift button event triggered');
-                this.scheduleForkliftTask();
-            });
-        } else {
-            console.error('❌ Forklift button not found!');
-        }
-
         if (debugModeBtn) {
             debugModeBtn.addEventListener('click', () => this.toggleDebugMode());
         }
 
+        // Location tab buttons commented out - can be revisited later
+        /*
         const tabBtns = document.querySelectorAll('.tab-btn');
         tabBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -129,6 +120,7 @@ class DataCenterSimulation {
                 this.switchLocation(location);
             });
         });
+        */
 
         const entityCanvas = this.canvases['entity-canvas'];
         if (entityCanvas) {
@@ -203,19 +195,57 @@ class DataCenterSimulation {
 
     setupDemoZones() {
         // Create demo interaction zones
-        const loadingDock = new LoadingDock(50, 100, 200, 150);
-        const storageBin1 = new StorageBin(400, 200, 150, 100);
-        const storageBin2 = new StorageBin(600, 200, 150, 100);
-        const serverRack = new ServerRackSlot(800, 250, 120, 200);
-        const qualityControl = new QualityControlStation(300, 350, 180, 80);
+        
+        // Loading Bay - 3x1 layout (3 docks VERTICALLY - moved down to clear title)
+        // Available area: approximately 315px wide x 600px height (minus margins)
+        const loadingDock1 = new LoadingDock(60, 170, 200, 150, 1);
+        const loadingDock2 = new LoadingDock(60, 350, 200, 150, 2);
+        const loadingDock3 = new LoadingDock(60, 530, 200, 150, 3);
+        
+        // Storage Room - 3x2 layout (3 rows, 2 columns) - moved down to clear title
+        // Available area: approximately 300px wide x 550px height
+        const storageBin1 = new StorageBin(420, 180, 120, 100, 'A1');
+        const storageBin2 = new StorageBin(580, 180, 120, 100, 'A2');
+        const storageBin3 = new StorageBin(420, 310, 120, 100, 'B1');
+        const storageBin4 = new StorageBin(580, 310, 120, 100, 'B2');
+        const storageBin5 = new StorageBin(420, 440, 120, 100, 'C1');
+        const storageBin6 = new StorageBin(580, 440, 120, 100, 'C2');
+        
+        // Server Floor - 3x2 layout (3 rows, 2 columns) - optimally distributed
+        // Available area: approximately 300px wide x 550px height
+        const serverRack1 = new ServerRackSlot(820, 140, 120, 110, 'R1', 1);
+        const serverRack2 = new ServerRackSlot(960, 140, 120, 110, 'R1', 2);
+        const serverRack3 = new ServerRackSlot(820, 290, 120, 110, 'R2', 1);
+        const serverRack4 = new ServerRackSlot(960, 290, 120, 110, 'R2', 2);
+        const serverRack5 = new ServerRackSlot(820, 440, 120, 110, 'R3', 1);
+        const serverRack6 = new ServerRackSlot(960, 440, 120, 110, 'R3', 2);
+        
+        const qualityControl = new QualityControlStation(280, 570, 180, 80);
 
-        this.zoneManager.addZone(loadingDock);
+        // Add Loading Bay zones
+        this.zoneManager.addZone(loadingDock1);
+        this.zoneManager.addZone(loadingDock2);
+        this.zoneManager.addZone(loadingDock3);
+        
+        // Add Storage Room zones
         this.zoneManager.addZone(storageBin1);
         this.zoneManager.addZone(storageBin2);
-        this.zoneManager.addZone(serverRack);
+        this.zoneManager.addZone(storageBin3);
+        this.zoneManager.addZone(storageBin4);
+        this.zoneManager.addZone(storageBin5);
+        this.zoneManager.addZone(storageBin6);
+        
+        // Add Server Floor zones
+        this.zoneManager.addZone(serverRack1);
+        this.zoneManager.addZone(serverRack2);
+        this.zoneManager.addZone(serverRack3);
+        this.zoneManager.addZone(serverRack4);
+        this.zoneManager.addZone(serverRack5);
+        this.zoneManager.addZone(serverRack6);
+        
         this.zoneManager.addZone(qualityControl);
 
-        console.log('✅ Created demo interaction zones');
+        console.log('✅ Created demo interaction zones with corrected layouts');
     }
 
     update(deltaTime) {
@@ -268,11 +298,6 @@ class DataCenterSimulation {
                 this.simulateTruckArrival();
             }
             this.nextTruckArrival = this.simulationTime + this.getRandomTruckInterval();
-        }
-        
-        // Schedule periodic forklift tasks (every 20 seconds)
-        if (Math.floor(this.simulationTime) % 20 === 0 && this.frameCount % 60 === 0) {
-            this.scheduleForkliftTask();
         }
         
         // Update event system with performance tracking
@@ -639,6 +664,8 @@ class DataCenterSimulation {
         this.addNotification('View reset to default', 'info');
     }
 
+    // switchLocation method commented out - can be revisited later
+    /*
     switchLocation(location) {
         this.currentLocation = location;
         
@@ -654,6 +681,7 @@ class DataCenterSimulation {
         
         this.addNotification(`Switched to ${location}`, 'info');
     }
+    */
 
     // Event Handlers
     handleCanvasClick(event) {
@@ -1348,62 +1376,7 @@ class DataCenterSimulation {
         }
     }
 
-    scheduleForkliftTask() {
-        console.log('🏗️ Forklift task button clicked');
-        this.addNotification('🏗️ Forklift button clicked!', 'info');
-        console.log('🏗️ Forklift class available:', typeof Forklift !== 'undefined');
-        
-        // Find an existing forklift or create a new one
-        let forklift = this.entities.find(entity => entity.type === 'forklift');
-        
-        if (!forklift) {
-            console.log('🏗️ Creating new forklift');
-            if (typeof Forklift === 'undefined') {
-                console.error('🏗️ Forklift class not available!');
-                this.addNotification('🏗️ Error: Forklift class not loaded', 'error');
-                return;
-            }
-            // Position forklift in a more visible location (center-left area)
-            forklift = new Forklift(150, 200); 
-            this.entities.push(forklift);
-            this.addNotification('🏗️ Forklift deployed to datacenter floor', 'info');
-        }
-        
-        // Find hardware items that need to be moved
-        const hardwareItems = this.entities.filter(entity => 
-            entity.hardwareType && (entity.hardwareType === 'Server' || entity.hardwareType === 'Storage Array' || entity.hardwareType === 'Network Switch'));
-        
-        console.log(`🏗️ Found ${hardwareItems.length} hardware items`);
-        console.log(`🏗️ All entities:`, this.entities.map(e => e.type || e.hardwareType || e.constructor.name));
-        console.log(`🏗️ Forklift isCarrying: ${forklift.isCarrying}, isMoving: ${forklift.enhancedMovement?.isMoving}`);
-        
-        if (hardwareItems.length > 0 && !forklift.isCarrying && !forklift.enhancedMovement?.isMoving) {
-            const targetItem = hardwareItems[Math.floor(Math.random() * hardwareItems.length)];
-            
-            // Move random item to a new position
-            const newX = 100 + Math.random() * 500;
-            const newY = 100 + Math.random() * 300;
-            
-            console.log(`🏗️ Attempting to move ${targetItem.hardwareType} from (${targetItem.position.x}, ${targetItem.position.y}) to (${newX}, ${newY})`);
-            
-            const success = forklift.pickupAndMove(targetItem, newX, newY);
-            
-            if (success) {
-                this.addNotification(`🏗️ Forklift task: Moving ${targetItem.hardwareType}`, 'info');
-            } else {
-                this.addNotification(`🏗️ Forklift busy - task queued`, 'warning');
-            }
-        } else if (hardwareItems.length === 0) {
-            this.addNotification(`🏗️ No hardware items to move`, 'warning');
-            // Create some hardware items for testing
-            this.createRandomHardware();
-            this.createRandomHardware();
-            this.addNotification(`🏗️ Created test hardware items`, 'info');
-        } else {
-            const reason = forklift.isCarrying ? 'carrying items' : 'already moving';
-            this.addNotification(`🏗️ Forklift is busy (${reason})`, 'warning');
-        }
-    }
+
 
     toggleDebugMode() {
         this.debugMode = !this.debugMode;
