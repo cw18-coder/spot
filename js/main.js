@@ -54,6 +54,9 @@ class DataCenterSimulation {
         this.setupDemoHardware();
         this.setupDemoZones();
         this.showLoadingScreen();
+        
+        // Initialize scroll indicator
+        this.initializeScrollIndicator();
     }
 
     initializeCanvases() {
@@ -141,6 +144,11 @@ class DataCenterSimulation {
         window.addEventListener('keydown', (e) => this.handleKeyDown(e));
 
         console.log('✅ Event listeners initialized');
+    }
+
+    initializeScrollIndicator() {
+        // Simple scroll indicator - just needs to be visible, no complex logic needed
+        console.log('✅ Scroll indicator initialized');
     }
 
     initializeGameLoop() {
